@@ -5,9 +5,14 @@ try:
 except ModuleNotFoundError:
     import importlib_metadata  # type: ignore
 
+from .config import Config
+
 _metadata = importlib_metadata.metadata("covid19analysismx")  # type: ignore
 
 # Export package information.
 __version__ = _metadata["version"]
 
-__all__ = ["__version__"]
+__all__ = [
+    "Config",
+    "__version__",
+]
