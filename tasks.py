@@ -8,6 +8,7 @@ from subprocess import run
 from typing import List
 
 import typer
+
 from covid19analysismx import __version__
 
 app = typer.Typer()
@@ -22,6 +23,13 @@ def _run(command: List[str]):
 def format_():
     """Format the source code using black."""
     command = ["black", "tasks.py", "src", "tests"]
+    _run(command)
+
+
+@app.command()
+def isort():
+    """Format the source code using black."""
+    command = ["isort", "tasks.py", "src", "tests"]
     _run(command)
 
 
