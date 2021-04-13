@@ -186,3 +186,16 @@ dmypy.json
 /.idea/
 /media
 /outputs
+
+# Directories used for storing testing data.
+/__tests_data__
+
+# Ignore downloaded zip and CSV files, unless explicitly indicated.
+*datos_abiertos_covid19*.zip
+*COVID19MEXICO.csv
+
+# JSON files with information about the COVID data.
+*COVID19MEXICO.json
+
+# Auto-generated sqlite databases.
+*.sqlite
