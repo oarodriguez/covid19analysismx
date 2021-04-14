@@ -209,7 +209,13 @@ class DataManager:
             zip_file = ZipFile(temp_file)
             for file_name in zip_file.namelist():
                 if file_name.endswith("COVID19MEXICO.csv"):
-                    zip_file.extract(file_name, path=dest_dir)
+                    zip_info = zip_file.getinfo(file_name)
+                    data_path = dest_dir / file_name
+                    if not data_path.exists():
+                        zip_file.extract(file_name, path=dest_dir)
+                    else:
+                        if zip_info.file_size != data_path.stat().st_size:
+                            zip_file.extract(file_name, path=dest_dir)
                     break
         # Something is wrong with the zip file.
         if file_name is None:
