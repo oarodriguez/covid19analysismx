@@ -17,7 +17,7 @@ DOTENV_FILE = "DOTENV_FILE"
 # Constants.
 DATA_DIR = "data"
 CATALOGS_DIR_NAME = "catalogs"
-DATABASE_NAME = "main-database.sqlite"
+DATABASE_NAME = "main-database.duckdb"
 
 # URL for getting the most recent data.
 COVID_DATA_URL = (

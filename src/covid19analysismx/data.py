@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum, unique
 from pathlib import Path
-from sqlite3 import Connection, connect
 from tempfile import TemporaryFile
 from typing import Any, ClassVar, Dict, Iterable, Optional
 from zipfile import ZipFile
 
 import pandas as pd
 import requests
+from duckdb import DuckDBPyConnection, connect
 
 from .config import Config
 
@@ -179,10 +179,9 @@ class DataManager:
     # Project/App configuration instance.
     config: Config
 
-    @property
-    def connection(self):
+    def connect(self, read_only: bool = False) -> DuckDBPyConnection:
         """Return a new connection to the system database."""
-        return connect(self.config.DATABASE)
+        return connect(str(self.config.DATABASE), read_only)
 
     def remote_covid_data_info(self):
         """Retrieve information about the latest COVID data."""
@@ -234,32 +233,68 @@ class DataManager:
         data_info.save(info_path)
         return COVIDData(data_path, data_info)
 
-    def save_covid_data_chunk(
-        self,
-        connection: Connection,
-        chunk_df: pd.DataFrame,
-        save_mode: str = "replace",
-    ):
-        """Save a COVID-19 data chunk into the system database."""
-        table_name = self.config.COVID_DATA_TABLE_NAME
-        # save_mode = "replace" if first_chunk else "append"
-        chunk_df.to_sql(table_name, connection, if_exists=save_mode)
-
-    def save_covid_data(self, connection: Connection, data: COVIDData):
-        """Save the COVID-19 data into the system database.
-
-        If there is data previously stored in the table ``table_name``, this
-        method replaces it with the new data.
+    def create_covid_cases_table(self, connection: DuckDBPyConnection):
+        """Create the COVID-19 data table in the system database."""
+        query = f"""
+        CREATE TABLE {self.config.COVID_DATA_TABLE_NAME}
+        (
+            FECHA_ACTUALIZACION   DATE,
+            ID_REGISTRO           TEXT,
+            ORIGEN                INTEGER,
+            SECTOR                INTEGER,
+            ENTIDAD_UM            INTEGER,
+            SEXO                  INTEGER,
+            ENTIDAD_NAC           INTEGER,
+            ENTIDAD_RES           INTEGER,
+            MUNICIPIO_RES         INTEGER,
+            TIPO_PACIENTE         INTEGER,
+            FECHA_INGRESO         DATE,
+            FECHA_SINTOMAS        DATE,
+            FECHA_DEF             TEXT,
+            INTUBADO              INTEGER,
+            NEUMONIA              INTEGER,
+            EDAD                  INTEGER,
+            NACIONALIDAD          INTEGER,
+            EMBARAZO              INTEGER,
+            HABLA_LENGUA_INDIG    INTEGER,
+            INDIGENA              INTEGER,
+            DIABETES              INTEGER,
+            EPOC                  INTEGER,
+            ASMA                  INTEGER,
+            INMUSUPR              INTEGER,
+            HIPERTENSION          INTEGER,
+            OTRA_COM              INTEGER,
+            CARDIOVASCULAR        INTEGER,
+            OBESIDAD              INTEGER,
+            RENAL_CRONICA         INTEGER,
+            TABAQUISMO            INTEGER,
+            OTRO_CASO             INTEGER,
+            TOMA_MUESTRA_LAB      INTEGER,
+            RESULTADO_LAB         INTEGER,
+            TOMA_MUESTRA_ANTIGENO INTEGER,
+            RESULTADO_ANTIGENO    INTEGER,
+            CLASIFICACION_FINAL   INTEGER,
+            MIGRANTE              INTEGER,
+            PAIS_NACIONALIDAD     TEXT,
+            PAIS_ORIGEN           TEXT,
+            UCI                   INTEGER
+        );
         """
-        data_chunks = data.chunks()
-        # When saving the first partial dataframe, we have to indicate
-        # that we want to replace any existing data in the table.
-        first_chunk = next(data_chunks)
-        with connection as conn:
-            self.save_covid_data_chunk(conn, first_chunk, save_mode="replace")
-        for df_chunk in data_chunks:
-            with connection as conn:
-                self.save_covid_data_chunk(conn, df_chunk, save_mode="append")
+        # Create the COVID cases table according to the definition.
+        connection.execute(query)
+
+    def save_covid_data(self, connection: DuckDBPyConnection, data: COVIDData):
+        """Save the COVID-19 data into the system database."""
+        # Transfer the data from the CSV file into the database in bulk.
+        # Limit the amount of memory used during the bulk insertion to
+        # 2 Gigabytes.
+        data_path = data.path
+        query = f"""
+            PRAGMA memory_limit='2.0GB';
+            COPY "{self.config.COVID_DATA_TABLE_NAME}"
+            FROM '{data_path}' ( HEADER );
+        """
+        connection.execute(query)
 
     def catalogs(self):
         """Iterate over catalogs, i.e., files with a .csv extension."""
@@ -269,26 +304,34 @@ class DataManager:
                 yield file
 
     @staticmethod
-    def save_catalog(catalog: Path, connection: Connection):
-        """Save the catalog data in the system database."""
+    def save_catalog(catalog: Path, connection: DuckDBPyConnection):
+        """Save the catalog data in the system database.
+
+        If the catalogs data already exist in the database, the
+        corresponding tables will be deleted and recreated.
+        """
         # Here, since the only characters in the catalogs file names
         # are alphanumeric (we saved the files this way on purpose), we
         # use the file name, without the extension, as the table name .
         # Naturally, we convert the name the lowercase.
         table_name = catalog.stem.lower()
         cat_data = pd.read_csv(catalog)
-        cat_data.to_sql(table_name, connection, if_exists="replace")
+        connection.register("cat_data_view", cat_data)
+        query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name} AS
+            SELECT * FROM cat_data_view;
+        """
+        connection.unregister("cat_data_view")
+        connection.execute(query)
 
-    def save_catalogs(self, connection: Connection):
+    def save_catalogs(self, connection: DuckDBPyConnection):
         """Save the catalogs data in the system database."""
         for catalog in self.catalogs():
             # Here, since the only characters in the catalogs file names
             # are alphanumeric (we saved the files this way on purpose), we
             # use the file name, without the extension, as the table name .
             # Naturally, we convert the name the lowercase.
-            with connection as conn:
-                # Rollback if something bad happened.
-                self.save_catalog(catalog, conn)
+            self.save_catalog(catalog, connection)
 
     def clean_sources(self, info: bool = False):
         """Remove data sources (CSV files) inside the data directory.

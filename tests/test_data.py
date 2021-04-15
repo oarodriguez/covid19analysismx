@@ -1,7 +1,6 @@
 import os
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from pathlib import Path
-from sqlite3 import Connection
 
 import pytest
 import responses
@@ -17,13 +16,15 @@ TEST_ENV_VARS = {
     "CATALOGS_DIR": str(project_path / "data" / "catalogs"),
     "COVID_DATA_URL": (
         "http://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/"
-        "historicos/04/datos_abiertos_covid19_30.04.2020.zip"
+        "historicos/2021/04/datos_abiertos_covid19_11.04.2021.zip"
     ),
 }
 
 # Testing data location.
 LOCAL_DATA_FILE = (
-    Path(__file__).parent / "data" / "datos_abiertos_covid19_31.08.2020.zip"
+    Path(__file__).parent
+    / "data"
+    / "datos_abiertos_covid19_11.04.2021.mock.zip"
 )
 
 # The following headers are set in true responses from the
@@ -67,8 +68,9 @@ def managed_covid_data(data: COVIDData):
         yield data
     finally:
         pass
-        data.path.unlink()
-    assert not data.path.exists()
+        # FIXME: Keep extracted data by know, but eventually must be deleted.
+        # data.path.unlink()
+    # assert not data.path.exists()
 
 
 @pytest.fixture(scope="module")
@@ -114,8 +116,7 @@ def covid_data_info(manager: DataManager):
 @pytest.fixture(scope="module")
 def connection(manager: DataManager):
     """Yield an auto-closing SQLite connection to the system database."""
-    with closing(manager.connection) as conn:
-        yield conn
+    yield manager.connect()
 
 
 def test_not_different_than(
@@ -138,39 +139,43 @@ def test_chunks(covid_data: COVIDData):
         assert num_rows == size
 
 
-def test_save_covid_data(
-    covid_data: COVIDData, manager: DataManager, connection: Connection
-):
+def test_save_covid_data(covid_data: COVIDData, manager: DataManager):
     """Check that we can store COVID data without a problem."""
     # Any required rollback operations are realized inside the
     # save_covid_data method.
+    if manager.config.DATABASE.exists():
+        manager.config.DATABASE.unlink()
+    connection = manager.connect()
+    manager.create_covid_cases_table(connection)
     manager.save_covid_data(connection, covid_data)
-    con_cursor = connection.cursor()
+    # Duckdb database tables are stored into the table
+    # sqlite_master, just like in a SQLite database.
     sql_query = """
         SELECT name
         FROM sqlite_master
         WHERE type = 'table' AND name NOT LIKE 'sqlite_%;'
     """
-    con_cursor.execute(sql_query)
-    tables = {table_name for table_name, in con_cursor.fetchall()}
+    connection.execute(sql_query)
+    tables = {table_name for table_name, in connection.fetchall()}
     assert manager.config.COVID_DATA_TABLE_NAME in tables
+    connection.close()
 
 
-def test_save_catalogs(manager: DataManager, connection: Connection):
+def test_save_catalogs(manager: DataManager):
     """Check that other data catalogs can be stored without problems."""
-    with connection:
-        manager.save_catalogs(connection)
+    connection = manager.connect()
+    manager.save_catalogs(connection)
     # Manually check the tables are all in the database.
-    con_cursor = connection.cursor()
     sql_query = """
         SELECT name
         FROM sqlite_master
         WHERE type = 'table' AND name NOT LIKE 'sqlite_%;'
     """
-    con_cursor.execute(sql_query)
-    tables = {table_name for table_name, in con_cursor.fetchall()}
+    connection.execute(sql_query)
+    tables = {table_name for table_name, in connection.fetchall()}
     for cat_file in manager.catalogs():
         assert cat_file.stem.lower() in tables
+    connection.close()
 
 
 def test_clean_sources(manager: DataManager):
