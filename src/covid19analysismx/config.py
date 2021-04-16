@@ -14,6 +14,9 @@ DEFAULT_DOTENV_FILE = ".env"
 # Used to override the name of the .env file loaded by python-dotenv.
 DOTENV_FILE = "DOTENV_FILE"
 
+# Project directory path.
+project_path = Path(__file__).parent.parent.parent
+
 # Constants.
 DATA_DIR = "data"
 CATALOGS_DIR_NAME = "catalogs"
@@ -65,11 +68,11 @@ class Config:
 
         # Normalize the data directory.
         data_dir_var = environ.get("DATA_DIR")
-        if data_dir_var is None:
-            raise KeyError(
-                "the required environment variable 'DATA_DIR' is not set"
-            )
-        data_dir = Path(data_dir_var).expanduser().resolve()
+        data_dir = (
+            project_path / DATA_DIR
+            if data_dir_var is None
+            else Path(data_dir_var).expanduser().resolve()
+        )
 
         # Normalize the catalogs directory.
         catalogs_dir_var = environ.get("CATALOGS_DIR")
