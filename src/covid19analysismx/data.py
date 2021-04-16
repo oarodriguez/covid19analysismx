@@ -7,11 +7,13 @@ from enum import Enum, unique
 from pathlib import Path
 from tempfile import TemporaryFile
 from typing import Any, ClassVar, Dict, Iterable, Optional
+from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import pandas as pd
 import requests
 from duckdb import DuckDBPyConnection, connect
+from requests import Response
 
 from .config import Config
 
@@ -91,9 +93,16 @@ class COVIDDataInfo:
         return None if _date is None else date.fromisoformat(_date)
 
     @property
-    def http_headers(self) -> Dict[str, Any]:
+    def http_headers(self) -> Optional[Dict[str, Any]]:
         """Received HTTP headers when downloading the data."""
-        return self.info["http_headers"]
+        return self.info.get("http_headers", None)
+
+    @property
+    def data_size(self):
+        """Return the data size in bytes."""
+        if self.http_headers is None:
+            return None
+        return int(self.http_headers.get("Content-Length"))
 
     def save(self, path: Path):
         """Save a data source's information."""
@@ -105,9 +114,11 @@ class COVIDDataInfo:
         # HEAD requests at COVID-19 data sources URL return the
         # Content-Length header. We use this to decide if there is
         # different and newer data available.
-        self_size = int(self.http_headers["Content-Length"])
-        other_size = int(other.http_headers["Content-Length"])
-        return True if self_size != other_size else False
+        if self.data_size is None:
+            return True
+        if other.data_size is None:
+            return True
+        return True if self.data_size != other.data_size else False
 
 
 @dataclass(frozen=True)
@@ -191,8 +202,8 @@ class DataManager:
         headers = dict(response.headers)
         return COVIDDataInfo({"http_headers": headers})
 
-    def download_covid_data(self):
-        """Get the data from the government website.
+    def download_covid_data(self, keep_zip: bool = False):
+        """Retrieve the COVID data from the government website.
 
         It stores the CSV file with data in the filesystem, and
         discards the zipped version.
@@ -201,37 +212,64 @@ class DataManager:
         latest_resp = requests.get(data_url)
         latest_resp.raise_for_status()
         # We are going to save the data in the DATA_DIR directory.
+        if keep_zip:
+            zip_file_name = Path(urlparse(data_url).path).name
+            dest_dir = self.config.DATA_DIR
+            zip_path = dest_dir / zip_file_name
+            with zip_path.open("wb") as fp:
+                fp.write(latest_resp.content)
+            data_path = self.unzip_covid_data_csv(ZipFile(zip_path))
+        else:
+            with TemporaryFile(suffix="zip") as temp_file:
+                temp_file.write(latest_resp.content)
+                data_path = self.unzip_covid_data_csv(ZipFile(temp_file))
+        # Store the information file.
+        data_info = self.covid_data_info(data_path, latest_resp)
+        info_path = data_path.with_suffix(".json")
+        data_info.save(info_path)
+        return COVIDData(data_path, data_info)
+
+    def extract_covid_data(self, path: Path):
+        """Retrieve COVID data from a local zipped file."""
+        data_path = self.unzip_covid_data_csv(ZipFile(path))
+        # Store the information file.
+        data_info = self.covid_data_info(data_path)
+        info_path = data_path.with_suffix(".json")
+        data_info.save(info_path)
+        return COVIDData(data_path, data_info)
+
+    def unzip_covid_data_csv(self, zip_file: ZipFile):
+        """Extract the CSV from a zipped data file."""
         file_name = None
         dest_dir = self.config.DATA_DIR
-        with TemporaryFile(suffix="zip") as temp_file:
-            temp_file.write(latest_resp.content)
-            zip_file = ZipFile(temp_file)
-            for file_name in zip_file.namelist():
-                if file_name.endswith("COVID19MEXICO.csv"):
-                    zip_info = zip_file.getinfo(file_name)
-                    data_path = dest_dir / file_name
-                    if not data_path.exists():
+        for file_name in zip_file.namelist():
+            if file_name.endswith("COVID19MEXICO.csv"):
+                zip_info = zip_file.getinfo(file_name)
+                data_path = dest_dir / file_name
+                if not data_path.exists():
+                    zip_file.extract(file_name, path=dest_dir)
+                else:
+                    if zip_info.file_size != data_path.stat().st_size:
                         zip_file.extract(file_name, path=dest_dir)
-                    else:
-                        if zip_info.file_size != data_path.stat().st_size:
-                            zip_file.extract(file_name, path=dest_dir)
-                    break
+                break
         # Something is wrong with the zip file.
         if file_name is None:
             raise KeyError
+        return dest_dir / file_name
+
+    @staticmethod
+    def covid_data_info(path: Path, response: Response = None):
+        """Retrieve information about a COVID CSV data file."""
+        file_name = path.name
         source_name_fmt = "%d%m%yCOVID19MEXICO.csv"
         source_date = datetime.strptime(file_name, source_name_fmt).date()
-        file_info = {
+        file_info: Dict[str, Any] = {
             "source_file_name": file_name,
             "source_file_date": source_date.isoformat(),
-            "http_headers": dict(latest_resp.headers),
         }
-        data_path = dest_dir / file_name
-        info_path = data_path.with_suffix(".json")
-        data_info = COVIDDataInfo(file_info)
-        # Store the information file
-        data_info.save(info_path)
-        return COVIDData(data_path, data_info)
+        if response is not None:
+            file_info["http_headers"] = dict(response.headers)
+        return COVIDDataInfo(file_info)
 
     def create_covid_cases_table(self, connection: DuckDBPyConnection):
         """Create the COVID-19 data table in the system database."""
@@ -333,20 +371,39 @@ class DataManager:
             # Naturally, we convert the name the lowercase.
             self.save_catalog(catalog, connection)
 
-    def clean_sources(self, info: bool = False):
-        """Remove data sources (CSV files) inside the data directory.
+    def clean_sources(
+        self,
+        zip_files: bool = True,
+        csv_files: bool = False,
+        info_files: bool = False,
+    ):
+        """Remove data sources inside the data directory.
 
-        The files to be deleted have names that end with
-        ``COVID19MEXICO.csv``.
+        This routine only removes files whose names match the following
+        glob patterns:
+
+        - *COVID19MEXICO.csv
+        - *COVID19MEXICO.json
+        - datos_abiertos_covid19*.zip
+
+        Also, it only deletes those files if their corresponding flags
+        (zip_files, csv_files, and  info_files, respectively) are True.
         """
         sources_dir = self.config.DATA_DIR
         assert sources_dir.is_dir()
         assert sources_dir.exists()
-        for child in sources_dir.iterdir():
-            if not child.is_file():
-                continue
-            if child.name.endswith("COVID19MEXICO.csv"):
-                child.unlink()
-                info_file = child.with_suffix(".json")
-                if info and info_file.exists():
-                    info_file.unlink()
+
+        def _unlink(_child: Path):
+            """Delete the file ``_child``."""
+            if _child.is_file():
+                _child.unlink()
+
+        if zip_files:
+            for child in sources_dir.glob("datos_abiertos_covid19*.zip"):
+                _unlink(child)
+        if csv_files:
+            for child in sources_dir.glob("*COVID19MEXICO.csv"):
+                _unlink(child)
+        if info_files:
+            for child in sources_dir.glob("*COVID19MEXICO.json"):
+                _unlink(child)

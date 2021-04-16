@@ -180,4 +180,4 @@ def test_save_catalogs(manager: DataManager):
 
 def test_clean_sources(manager: DataManager):
     """Verify that deletion of COVID-19 data sources works well."""
-    manager.clean_sources()
+    manager.clean_sources(csv_files=True)
