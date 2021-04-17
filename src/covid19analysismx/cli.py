@@ -1,11 +1,14 @@
 """Command Line Interface of the project."""
+# from __future__ import annotations
+
 from typing import Optional
 
+import duckdb
 import typer
 
-from covid19analysismx import Config, COVIDDataInfo, DataManager
-
 # CLI application instance.
+from covid19analysismx import Config, COVIDDataInfo, DataManager, DBDataManager
+
 app = typer.Typer()
 
 # Global configuration object.
@@ -51,13 +54,14 @@ def setup_database(force: Optional[bool] = force_spec):
     print("COVID-19 data downloaded.")
 
     # SQLite connection. It should be automatically closed on
-    connection = manager.connect()
+    connection = duckdb.connect(str(config.DATABASE))
+    dbd_manager = DBDataManager(connection)
     print("Saving COVID-19 data to system database...")
-    manager.create_covid_cases_table(connection)
-    manager.save_covid_data(connection, data)
+    dbd_manager.create_covid_cases_table(config.COVID_DATA_TABLE_NAME)
+    dbd_manager.save_covid_data(config.COVID_DATA_TABLE_NAME, data)
     print("COVID-19 data saved.")
     print("Saving additional information catalogs...")
-    manager.save_catalogs(connection)
+    dbd_manager.save_catalogs(manager.catalogs())
     print("Catalogs saved.")
     connection.close()
 

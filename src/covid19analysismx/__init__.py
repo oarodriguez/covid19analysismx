@@ -6,7 +6,13 @@ except ModuleNotFoundError:
     import importlib_metadata  # type: ignore
 
 from .config import Config
-from .data import COVIDData, COVIDDataColumn, COVIDDataInfo, DataManager
+from .data import (
+    COVIDData,
+    COVIDDataColumn,
+    COVIDDataInfo,
+    DataManager,
+    DBDataManager,
+)
 
 _metadata = importlib_metadata.metadata("covid19analysismx")  # type: ignore
 
@@ -19,5 +25,6 @@ __all__ = [
     "COVIDDataInfo",
     "Config",
     "DataManager",
+    "DBDataManager",
     "__version__",
 ]

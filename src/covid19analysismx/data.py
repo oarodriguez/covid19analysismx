@@ -6,13 +6,13 @@ from datetime import date, datetime
 from enum import Enum, unique
 from pathlib import Path
 from tempfile import TemporaryFile
-from typing import Any, ClassVar, Dict, Iterable, Optional
+from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import pandas as pd
 import requests
-from duckdb import DuckDBPyConnection, connect
+from duckdb import DuckDBPyConnection
 from requests import Response
 
 from .config import Config
@@ -183,16 +183,17 @@ class COVIDData:
                 yield self._fix(chunk_df)
 
 
+# Useful type hints.
+CatalogName = str
+DataCatalogs = Iterable[Tuple[CatalogName, Path]]
+
+
 @dataclass(frozen=True)
 class DataManager:
     """Manage several process for data manipulation and storage."""
 
     # Project/App configuration instance.
     config: Config
-
-    def connect(self, read_only: bool = False) -> DuckDBPyConnection:
-        """Return a new connection to the system database."""
-        return connect(str(self.config.DATABASE), read_only)
 
     def remote_covid_data_info(self):
         """Retrieve information about the latest COVID data."""
@@ -271,10 +272,63 @@ class DataManager:
             file_info["http_headers"] = dict(response.headers)
         return COVIDDataInfo(file_info)
 
-    def create_covid_cases_table(self, connection: DuckDBPyConnection):
+    def catalogs(self) -> DataCatalogs:
+        """Iterate over catalogs, i.e., files with a .csv extension."""
+        cat_dir = self.config.CATALOGS_DIR
+        for file_path in cat_dir.iterdir():
+            if file_path.suffix == ".csv":
+                table_name = file_path.stem.lower()
+                yield table_name, file_path
+
+    def clean_sources(
+        self,
+        zip_files: bool = True,
+        csv_files: bool = False,
+        info_files: bool = False,
+    ):
+        """Remove data sources inside the data directory.
+
+        This routine only removes files whose names match the following
+        glob patterns:
+
+        - *COVID19MEXICO.csv
+        - *COVID19MEXICO.json
+        - datos_abiertos_covid19*.zip
+
+        Also, it only deletes those files if their corresponding flags
+        (zip_files, csv_files, and  info_files, respectively) are True.
+        """
+        sources_dir = self.config.DATA_DIR
+        assert sources_dir.is_dir()
+        assert sources_dir.exists()
+
+        def _unlink(_child: Path):
+            """Delete the file ``_child``."""
+            if _child.is_file():
+                _child.unlink()
+
+        if zip_files:
+            for child in sources_dir.glob("datos_abiertos_covid19*.zip"):
+                _unlink(child)
+        if csv_files:
+            for child in sources_dir.glob("*COVID19MEXICO.csv"):
+                _unlink(child)
+        if info_files:
+            for child in sources_dir.glob("*COVID19MEXICO.json"):
+                _unlink(child)
+
+
+@dataclass(frozen=True)
+class DBDataManager:
+    """Handle the tasks for storing data in the database."""
+
+    # The connection object to the system database.
+    connection: DuckDBPyConnection
+
+    def create_covid_cases_table(self, table_name: str):
         """Create the COVID-19 data table in the system database."""
         query = f"""
-        CREATE TABLE {self.config.COVID_DATA_TABLE_NAME}
+        CREATE TABLE {table_name}
         (
             FECHA_ACTUALIZACION   DATE,
             ID_REGISTRO           TEXT,
@@ -319,31 +373,23 @@ class DataManager:
         );
         """
         # Create the COVID cases table according to the definition.
-        connection.execute(query)
+        self.connection.execute(query)
 
-    def save_covid_data(self, connection: DuckDBPyConnection, data: COVIDData):
-        """Save the COVID-19 data into the system database."""
+    def save_covid_data(self, table_name: str, data: COVIDData):
+        """Save the COVID-19 data into the database."""
         # Transfer the data from the CSV file into the database in bulk.
         # Limit the amount of memory used during the bulk insertion to
         # 2 Gigabytes.
         data_path = data.path
         query = f"""
             PRAGMA memory_limit='2.0GB';
-            COPY "{self.config.COVID_DATA_TABLE_NAME}"
+            COPY "{table_name}"
             FROM '{data_path}' ( HEADER );
         """
-        connection.execute(query)
+        self.connection.execute(query)
 
-    def catalogs(self):
-        """Iterate over catalogs, i.e., files with a .csv extension."""
-        cat_dir = self.config.CATALOGS_DIR
-        for file in cat_dir.iterdir():
-            if file.suffix == ".csv":
-                yield file
-
-    @staticmethod
-    def save_catalog(catalog: Path, connection: DuckDBPyConnection):
-        """Save the catalog data in the system database.
+    def save_catalog(self, name: str, path: Path):
+        """Save the catalog data in the database.
 
         If the catalogs data already exist in the database, the
         corresponding tables will be deleted and recreated.
@@ -352,58 +398,21 @@ class DataManager:
         # are alphanumeric (we saved the files this way on purpose), we
         # use the file name, without the extension, as the table name .
         # Naturally, we convert the name the lowercase.
-        table_name = catalog.stem.lower()
-        cat_data = pd.read_csv(catalog)
-        connection.register("cat_data_view", cat_data)
+        cat_data = pd.read_csv(path)
+        self.connection.register("cat_data_view", cat_data)
         query = f"""
-            CREATE TABLE IF NOT EXISTS {table_name} AS
-            SELECT * FROM cat_data_view;
-        """
-        connection.unregister("cat_data_view")
-        connection.execute(query)
+                DROP TABLE IF EXISTS {name};
+                CREATE TABLE {name} AS
+                SELECT * FROM cat_data_view;
+            """
+        self.connection.unregister("cat_data_view")
+        self.connection.execute(query)
 
-    def save_catalogs(self, connection: DuckDBPyConnection):
+    def save_catalogs(self, catalogs: DataCatalogs):
         """Save the catalogs data in the system database."""
-        for catalog in self.catalogs():
+        for name, path in catalogs:
             # Here, since the only characters in the catalogs file names
             # are alphanumeric (we saved the files this way on purpose), we
             # use the file name, without the extension, as the table name .
             # Naturally, we convert the name the lowercase.
-            self.save_catalog(catalog, connection)
-
-    def clean_sources(
-        self,
-        zip_files: bool = True,
-        csv_files: bool = False,
-        info_files: bool = False,
-    ):
-        """Remove data sources inside the data directory.
-
-        This routine only removes files whose names match the following
-        glob patterns:
-
-        - *COVID19MEXICO.csv
-        - *COVID19MEXICO.json
-        - datos_abiertos_covid19*.zip
-
-        Also, it only deletes those files if their corresponding flags
-        (zip_files, csv_files, and  info_files, respectively) are True.
-        """
-        sources_dir = self.config.DATA_DIR
-        assert sources_dir.is_dir()
-        assert sources_dir.exists()
-
-        def _unlink(_child: Path):
-            """Delete the file ``_child``."""
-            if _child.is_file():
-                _child.unlink()
-
-        if zip_files:
-            for child in sources_dir.glob("datos_abiertos_covid19*.zip"):
-                _unlink(child)
-        if csv_files:
-            for child in sources_dir.glob("*COVID19MEXICO.csv"):
-                _unlink(child)
-        if info_files:
-            for child in sources_dir.glob("*COVID19MEXICO.json"):
-                _unlink(child)
+            self.save_catalog(name, path)
