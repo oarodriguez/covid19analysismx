@@ -61,6 +61,10 @@ class Config:
     # Name for the COVID-19 table.
     COVID_DATA_TABLE_NAME: str = "covid_cases"
 
+    # Suffix for the info file corresponding to the COVID
+    # data saved in the database.
+    SAVED_COVID_DATA_INFO_FILE_SUFFIX: str = ".saved-covid-data.json"
+
     @classmethod
     def from_environ(cls):
         """Initialize from the system environment variables."""
