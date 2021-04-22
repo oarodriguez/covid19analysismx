@@ -38,7 +38,7 @@ cached_data_spec = typer.Option(
 )
 
 
-@app.command()
+@app.command("setup-db")
 def setup_database(
     force: Optional[bool] = force_spec,
     cached_data: Optional[Path] = cached_data_spec,
