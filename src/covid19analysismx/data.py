@@ -235,11 +235,11 @@ class DataManager:
         data_info.save(info_path)
         return COVIDData(data_path, data_info)
 
-    def extract_covid_data(self, path: Path):
+    def extract_covid_data(self, path: Path, response: Response = None):
         """Retrieve COVID data from a local zipped file."""
         data_path = self.unzip_covid_data_csv(ZipFile(path))
         # Store the information file.
-        data_info = self.covid_data_info(data_path)
+        data_info = self.covid_data_info(data_path, response)
         info_path = data_path.with_suffix(".json")
         data_info.save(info_path)
         return COVIDData(data_path, data_info)
