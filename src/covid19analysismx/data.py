@@ -6,7 +6,7 @@ from datetime import date, datetime
 from enum import Enum, unique
 from pathlib import Path
 from tempfile import TemporaryFile
-from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple
+from typing import Any, ClassVar, Dict, Iterable, Mapping, Optional, Tuple
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -107,7 +107,7 @@ class COVIDDataInfo:
         """Return the data size in bytes."""
         if self.http_headers is None:
             return None
-        return int(self.http_headers.get("Content-Length"))
+        return int(self.http_headers.get("content-length"))
 
     def save(self, path: Path):
         """Save a data source's information."""
@@ -188,6 +188,19 @@ class COVIDData:
                 yield self._fix(chunk_df)
 
 
+def normalize_http_headers(headers: Mapping[str, Any]):
+    """Normalize the headers names from an HTTP request.
+
+    :param headers: A mapping with the HTTP headers to normalize.
+    :return: A dictionary with the headers, with the header names in
+             lowercase.
+    """
+    norm_headers = {}
+    for name, value in headers.items():
+        norm_headers[name.lower()] = value
+    return norm_headers
+
+
 # Useful type hints.
 CatalogName = str
 DataCatalogs = Iterable[Tuple[CatalogName, Path]]
@@ -205,7 +218,7 @@ class DataManager:
         data_url = self.config.COVID_DATA_URL
         response = requests.head(data_url)
         response.raise_for_status()
-        headers = dict(response.headers)
+        headers = normalize_http_headers(response.headers)
         return COVIDDataInfo({"http_headers": headers})
 
     def download_covid_data(self, keep_zip: bool = False):
@@ -274,7 +287,9 @@ class DataManager:
             "source_file_date": source_date.isoformat(),
         }
         if response is not None:
-            file_info["http_headers"] = dict(response.headers)
+            file_info["http_headers"] = normalize_http_headers(
+                response.headers
+            )
         return COVIDDataInfo(file_info)
 
     def catalogs(self) -> DataCatalogs:
