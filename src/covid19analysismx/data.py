@@ -73,7 +73,7 @@ class COVIDDataColumn(str, Enum):
 
 
 @dataclass(frozen=True)
-class COVIDDataInfo:
+class DataInfo:
     """Represent the relevant information about a COVID data source."""
 
     # The information file contents.
@@ -94,7 +94,8 @@ class COVIDDataInfo:
     @property
     def source_date(self):
         """Return the data last update date."""
-        _date = self.info.get("source_file_date", None)
+        # TODO: Consider removing this method.
+        _date = self.info.get("source_data_date", None)
         return None if _date is None else date.fromisoformat(_date)
 
     @property
@@ -103,7 +104,7 @@ class COVIDDataInfo:
         return self.info.get("http_headers", None)
 
     @property
-    def data_size(self):
+    def source_data_size(self):
         """Return the data size in bytes."""
         if self.http_headers is None:
             return None
@@ -112,18 +113,20 @@ class COVIDDataInfo:
     def save(self, path: Path):
         """Save a data source's information."""
         with path.open("w") as fp:
-            json.dump(self.info, fp)
+            json.dump(self.info, fp, indent=4)
 
-    def different_than(self, other: "COVIDDataInfo"):
+    def different_than(self, other: "DataInfo"):
         """Check if data is different than other object data."""
         # HEAD requests at COVID-19 data sources URL return the
         # Content-Length header. We use this to decide if there is
         # different and newer data available.
-        if self.data_size is None:
+        if self.source_data_size is None:
             return True
-        if other.data_size is None:
+        if other.source_data_size is None:
             return True
-        return True if self.data_size != other.data_size else False
+        return (
+            True if self.source_data_size != other.source_data_size else False
+        )
 
 
 @dataclass(frozen=True)
@@ -134,7 +137,7 @@ class COVIDData:
     path: Path
 
     # Data info.
-    info: COVIDDataInfo
+    info: DataInfo
 
     # Default chunk size.
     default_chunk_size: ClassVar[int] = 2 ** 15
@@ -188,6 +191,20 @@ class COVIDData:
                 yield self._fix(chunk_df)
 
 
+@dataclass(frozen=True)
+class COVIDDataSpec:
+    """Represent a COVID data spec source."""
+
+    # Descriptors data location.
+    descriptors_path: Path
+
+    # Catalogs data location.
+    catalogs_path: Path
+
+    # Data info.
+    info: DataInfo
+
+
 def normalize_http_headers(headers: Mapping[str, Any]):
     """Normalize the headers names from an HTTP request.
 
@@ -219,7 +236,15 @@ class DataManager:
         response = requests.head(data_url)
         response.raise_for_status()
         headers = normalize_http_headers(response.headers)
-        return COVIDDataInfo({"http_headers": headers})
+        return DataInfo({"http_headers": headers})
+
+    def remote_covid_data_spec_info(self):
+        """Retrieve information about the latest COVID data."""
+        data_url = self.config.COVID_DATA_SPEC_URL
+        response = requests.head(data_url)
+        response.raise_for_status()
+        headers = normalize_http_headers(response.headers)
+        return DataInfo({"http_headers": headers})
 
     def download_covid_data(self, keep_zip: bool = False):
         """Retrieve the COVID data from the government website.
@@ -284,13 +309,75 @@ class DataManager:
         source_date = datetime.strptime(file_name, source_name_fmt).date()
         file_info: Dict[str, Any] = {
             "source_file_name": file_name,
-            "source_file_date": source_date.isoformat(),
+            "source_data_date": source_date.isoformat(),
         }
         if response is not None:
             file_info["http_headers"] = normalize_http_headers(
                 response.headers
             )
-        return COVIDDataInfo(file_info)
+        return DataInfo(file_info)
+
+    def download_covid_data_spec(self):
+        """Download the file containing the spec of the COVID data."""
+        data_url = self.config.COVID_DATA_SPEC_URL
+        latest_resp = requests.get(data_url)
+        latest_resp.raise_for_status()
+        # We are going to save the data in the DATA_DIR directory.
+        zip_file_name = Path(urlparse(data_url).path).name
+        dest_dir = self.config.DATA_DIR
+        zip_path = dest_dir / zip_file_name
+        with zip_path.open("wb") as fp:
+            fp.write(latest_resp.content)
+        return self.extract_covid_data_spec(zip_path, response=latest_resp)
+
+    def extract_covid_data_spec(self, path: Path, response: Response = None):
+        """Extract the spreadsheets containing the COVID data spec.
+
+        The zipped file should contain a pair of MS Excel spreadsheets
+        with the information.
+        """
+        data_files = {}
+        zip_file = ZipFile(path)
+        dest_dir = self.config.DATA_DIR
+        for file_name in zip_file.namelist():
+            if file_name.endswith(".xlsx"):
+                zip_info = zip_file.getinfo(file_name)
+                desc_path = dest_dir / file_name
+                if not desc_path.exists():
+                    zip_file.extract(file_name, path=dest_dir)
+                else:
+                    if zip_info.file_size != desc_path.stat().st_size:
+                        zip_file.extract(file_name, path=dest_dir)
+                if file_name.endswith("Descriptores_.xlsx"):
+                    data_files["descriptors_file_name"] = dest_dir / file_name
+                elif file_name.endswith("Catalogos.xlsx"):
+                    data_files["catalogs_file_name"] = dest_dir / file_name
+                else:
+                    pass
+        # Something is wrong with the zip file.
+        if not data_files:
+            raise KeyError
+
+        # Retrieve information about a COVID spec data files.
+        desc_path = data_files["descriptors_file_name"]
+        cats_path = data_files["catalogs_file_name"]
+        file_name = desc_path.name
+        source_name_fmt = "%y%m%d Descriptores_.xlsx"
+        source_date = datetime.strptime(file_name, source_name_fmt).date()
+        file_info: Dict[str, Any] = {
+            "descriptors_file_name": file_name,
+            "catalogs_file_name": cats_path.name,
+            "source_data_date": source_date.isoformat(),
+        }
+        if response is not None:
+            file_info["http_headers"] = normalize_http_headers(
+                response.headers
+            )
+        # Store the information file.
+        data_info = DataInfo(file_info)
+        info_path = desc_path.with_suffix(".json")
+        data_info.save(info_path)
+        return COVIDDataSpec(desc_path, cats_path, data_info)
 
     def catalogs(self) -> DataCatalogs:
         """Iterate over catalogs, i.e., files with a .csv extension."""

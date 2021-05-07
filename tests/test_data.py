@@ -10,7 +10,8 @@ from duckdb import DuckDBPyConnection, connect
 from covid19analysismx import (
     Config,
     COVIDData,
-    COVIDDataInfo,
+    COVIDDataSpec,
+    DataInfo,
     DataManager,
     DBDataManager,
 )
@@ -40,6 +41,17 @@ LOCAL_DATA_FILE = (
 CONTENT_TYPE = "application/x-zip-compressed"
 CONTENT_LENGTH = str(LOCAL_DATA_FILE.stat().st_size)
 RESPONSE_HEADERS = {
+    "Content-Length": CONTENT_LENGTH,
+    "Accept-Ranges": "bytes",
+}
+
+# Location of the file containing the COVID data specification.
+LOCAL_DATA_SPEC_FILE = (
+    Path(__file__).parent / "data" / "diccionario_datos_covid19.zip"
+)
+LOCAL_DATA_SPEC_CONTENT_TYPE = "application/x-zip-compressed"
+LOCAL_DATA_SPEC_CONTENT_LENGTH = str(LOCAL_DATA_SPEC_FILE.stat().st_size)
+LOCAL_DATA_SPEC_RESPONSE_HEADERS = {
     "Content-Length": CONTENT_LENGTH,
     "Accept-Ranges": "bytes",
 }
@@ -104,6 +116,27 @@ def covid_data(manager: DataManager):
 
 
 @pytest.fixture(scope="module")
+def covid_data_spec(manager: DataManager):
+    """Retrieve the testing data."""
+    with LOCAL_DATA_SPEC_FILE.open("rb") as fp:
+        local_data_body = fp.read()
+    # Create the mock response object and "download"
+    # the COVID data accordingly.
+    with responses.RequestsMock(
+        assert_all_requests_are_fired=False
+    ) as resp_mock:
+        resp_mock.add(
+            method=responses.GET,
+            url=manager.config.COVID_DATA_SPEC_URL,
+            body=local_data_body,
+            headers=LOCAL_DATA_SPEC_RESPONSE_HEADERS,
+            content_type=LOCAL_DATA_SPEC_CONTENT_TYPE,
+        )
+        covid_data_spec = manager.download_covid_data_spec()
+    yield covid_data_spec
+
+
+@pytest.fixture(scope="module")
 def covid_data_info(manager: DataManager):
     """Retrieve the testing data information."""
     # Create the mock response object and "download"
@@ -122,16 +155,38 @@ def covid_data_info(manager: DataManager):
 
 
 @pytest.fixture(scope="module")
+def covid_data_spec_info(manager: DataManager):
+    """Retrieve the testing data information."""
+    # Create the mock response object and "download"
+    # the COVID data info accordingly.
+    with responses.RequestsMock(
+        assert_all_requests_are_fired=False
+    ) as resp_mock:
+        resp_mock.add(
+            method=responses.HEAD,
+            url=manager.config.COVID_DATA_SPEC_URL,
+            headers=LOCAL_DATA_SPEC_RESPONSE_HEADERS,
+            content_type=LOCAL_DATA_SPEC_CONTENT_TYPE,
+        )
+        data_info = manager.remote_covid_data_spec_info()
+    yield data_info
+
+
+@pytest.fixture(scope="module")
 def connection(config: Config) -> DuckDBPyConnection:
     """Yield an auto-closing SQLite connection to the system database."""
     yield connect(str(config.DATABASE))
 
 
 def test_not_different_than(
-    covid_data: COVIDData, covid_data_info: COVIDDataInfo
+    covid_data: COVIDData,
+    covid_data_info: DataInfo,
+    covid_data_spec: COVIDDataSpec,
+    covid_data_spec_info: DataInfo,
 ):
     """Verify we know when the info of two data sources differ."""
     assert not covid_data_info.different_than(covid_data.info)
+    assert not covid_data_spec_info.different_than(covid_data_spec.info)
 
 
 def test_chunks(covid_data: COVIDData):

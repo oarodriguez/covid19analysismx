@@ -9,7 +9,7 @@ import requests
 import responses
 import typer
 
-from covid19analysismx import Config, COVIDDataInfo, DataManager, DBDataManager
+from covid19analysismx import Config, DataInfo, DataManager, DBDataManager
 
 # CLI application instance.
 app = typer.Typer()
@@ -55,7 +55,7 @@ def setup_database(
     )
     if cached_data is None:
         if saved_data_info_file.exists():
-            saved_data_info = COVIDDataInfo.from_file(saved_data_info_file)
+            saved_data_info = DataInfo.from_file(saved_data_info_file)
             # Only download new data if it is different than the
             # current one. Otherwise, finish the program.
             mock_info = manager.remote_covid_data_info()
@@ -114,7 +114,7 @@ def setup_database(
     # and the info file according to the CSV source file name used to
     # initialize them.
     if saved_data_info_file.exists():
-        saved_data_info = COVIDDataInfo.from_file(saved_data_info_file)
+        saved_data_info = DataInfo.from_file(saved_data_info_file)
         print(data.info)
         if not saved_data_info.different_than(data.info):
             if not force:
@@ -168,9 +168,16 @@ def check_updates():
         print("Local COVID-19 data has not been saved/downloaded yet.")
         return
     else:
-        saved_data_info = COVIDDataInfo.from_file(saved_data_info_file)
+        saved_data_info = DataInfo.from_file(saved_data_info_file)
         remote_info = manager.remote_covid_data_info()
         if saved_data_info.different_than(remote_info):
             print("There is new data available in the remote sources.")
         else:
             print("Local COVID-19 data is up to date.")
+
+            catalogs_headers = manager.remote_covid_data_spec_info()
+
+
+@app.command()
+def check_catalogs_updates():
+    """Docstring."""

@@ -28,6 +28,12 @@ COVID_DATA_URL = (
     "datos_abiertos/datos_abiertos_covid19.zip"
 )
 
+# URL for getting the most recent catalogs data.
+COVID_DATA_SPEC_URL = (
+    "http://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/"
+    "diccionario_datos_covid19.zip"
+)
+
 
 def get_environ():
     """Get environment variables.
@@ -57,6 +63,9 @@ class Config:
 
     # Parsed URL for getting the most recent COVID data.
     COVID_DATA_URL: str
+
+    # URL for getting the most recent catalogs data.
+    COVID_DATA_SPEC_URL: str
 
     # Name for the COVID-19 table.
     COVID_DATA_TABLE_NAME: str = "covid_cases"
@@ -97,10 +106,16 @@ class Config:
         # Latest data URL.
         covid_data_url = environ.get("COVID_DATA_URL", COVID_DATA_URL)
 
+        # Latest catalogs data URL.
+        covid_data_spec_url = environ.get(
+            "COVID_DATA_SPEC_URL", COVID_DATA_SPEC_URL
+        )
+
         # Set up a new configuration instance.
         return cls(
             DATA_DIR=data_dir,
             DATABASE=database,
             CATALOGS_DIR=catalogs_dir,
             COVID_DATA_URL=covid_data_url,
+            COVID_DATA_SPEC_URL=covid_data_spec_url,
         )

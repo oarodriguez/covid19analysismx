@@ -9,7 +9,8 @@ from .config import Config
 from .data import (
     COVIDData,
     COVIDDataColumn,
-    COVIDDataInfo,
+    COVIDDataSpec,
+    DataInfo,
     DataManager,
     DBDataManager,
 )
@@ -22,9 +23,10 @@ __version__ = _metadata["version"]
 __all__ = [
     "COVIDData",
     "COVIDDataColumn",
-    "COVIDDataInfo",
+    "COVIDDataSpec",
     "Config",
-    "DataManager",
     "DBDataManager",
+    "DataInfo",
+    "DataManager",
     "__version__",
 ]
