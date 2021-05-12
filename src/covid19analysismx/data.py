@@ -195,9 +195,14 @@ class COVIDData:
                 yield self._fix(chunk_df)
 
 
+# Useful type hints.
+CatalogName = str
+DataCatalogs = Iterable[Tuple[CatalogName, pd.DataFrame]]
+
+
 @dataclass(frozen=True)
 class COVIDDataSpec:
-    """Represent a COVID data spec source."""
+    """Represent the sources with the COVID data specs."""
 
     # Descriptors data location.
     descriptors_path: Path
@@ -207,6 +212,14 @@ class COVIDDataSpec:
 
     # Data info.
     info: DataInfo
+
+    def catalogs(self) -> DataCatalogs:
+        """Iterate through the data catalogs defined in the spec."""
+        sheets: Mapping[str, pd.DataFrame]
+        sheets = pd.read_excel(self.catalogs_path, sheet_name=None)
+        for sheet_name, cat_df in sheets.items():
+            cat_name = sheet_name.split(" ")[-1].lower()
+            yield cat_name, cat_df
 
 
 def normalize_http_headers(headers: Mapping[str, Any]):
@@ -220,11 +233,6 @@ def normalize_http_headers(headers: Mapping[str, Any]):
     for name, value in headers.items():
         norm_headers[name.lower()] = value
     return norm_headers
-
-
-# Useful type hints.
-CatalogName = str
-DataCatalogs = Iterable[Tuple[CatalogName, Path]]
 
 
 @dataclass(frozen=True)
@@ -382,9 +390,14 @@ class DataManager:
         """Iterate over catalogs, i.e., files with a .csv extension."""
         cat_dir = self.config.CATALOGS_DIR
         for file_path in cat_dir.iterdir():
-            if file_path.suffix == ".csv":
-                table_name = file_path.stem.lower()
-                yield table_name, file_path
+            # Here, since the only characters in the catalogs file names
+            # are alphanumeric (we saved the files this way on purpose), we
+            # use the file name, without the extension, as the table name.
+            # Naturally, we convert the name the lowercase.
+            if file_path.suffix.lower() == ".csv":
+                cat_name = file_path.stem.lower()
+                cat_df = pd.read_csv(file_path)
+                yield cat_name, cat_df
 
     def clean_sources(
         self,
@@ -494,18 +507,13 @@ class DBDataManager:
         """
         self.connection.execute(query)
 
-    def save_catalog(self, name: str, path: Path):
+    def save_catalog(self, name: str, cat_df: pd.DataFrame):
         """Save the catalog data in the database.
 
         If the catalogs data already exist in the database, the
         corresponding tables will be deleted and recreated.
         """
-        # Here, since the only characters in the catalogs file names
-        # are alphanumeric (we saved the files this way on purpose), we
-        # use the file name, without the extension, as the table name .
-        # Naturally, we convert the name the lowercase.
-        cat_data = pd.read_csv(path)
-        self.connection.register("cat_data_view", cat_data)
+        self.connection.register("cat_data_view", cat_df)
         query = f"""
                 DROP TABLE IF EXISTS {name};
                 CREATE TABLE {name} AS
@@ -516,9 +524,5 @@ class DBDataManager:
 
     def save_catalogs(self, catalogs: DataCatalogs):
         """Save the catalogs data in the system database."""
-        for name, path in catalogs:
-            # Here, since the only characters in the catalogs file names
-            # are alphanumeric (we saved the files this way on purpose), we
-            # use the file name, without the extension, as the table name .
-            # Naturally, we convert the name the lowercase.
-            self.save_catalog(name, path)
+        for cat_name, cat_df in catalogs:
+            self.save_catalog(cat_name, cat_df)

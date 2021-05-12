@@ -233,6 +233,27 @@ def test_save_covid_data(config: Config, covid_data: COVIDData):
     connection.close()
 
 
+def test_extract_catalogs(config: Config, covid_data_spec: COVIDDataSpec):
+    """Verify that we can extract the catalogs information.
+
+    In this test, we only check that we can extract the catalogs successfully
+    to CSV files. In principle, these files go into the CATALOGS_DIR
+    directory defined in the project configuration. However, the catalogs
+    data extracted from the spec file (an Excel spreadsheet) must be fixed
+    manually since the spec file has some format inconsistencies. We do not
+    want to overwrite already existing, well-formed CSV files with
+    inconsistent ones, so we define a different catalogs_dir variable to
+    store the new files.
+    """
+    catalogs_dir = project_path / "__tests_data__" / "catalogs"
+    catalogs_dir.mkdir(parents=True, exist_ok=True)
+    for cat_name, cat_df in covid_data_spec.catalogs():
+        file_name = f"{cat_name}_cat.csv"
+        file_name = catalogs_dir / file_name
+        cat_df.to_csv(file_name, index=False, line_terminator="\n")
+        print(cat_name)
+
+
 def test_save_catalogs(config: Config, manager: DataManager):
     """Check that other data catalogs can be stored without problems."""
     connection = connect(str(config.DATABASE))
