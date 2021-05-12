@@ -181,11 +181,16 @@ def connection(config: Config) -> DuckDBPyConnection:
 def test_not_different_than(
     covid_data: COVIDData,
     covid_data_info: DataInfo,
-    covid_data_spec: COVIDDataSpec,
-    covid_data_spec_info: DataInfo,
 ):
     """Verify we know when the info of two data sources differ."""
     assert not covid_data_info.different_than(covid_data.info)
+
+
+def test_spec_not_different_than(
+    covid_data_spec: COVIDDataSpec,
+    covid_data_spec_info: DataInfo,
+):
+    """Verify we know when the info of two specs differ."""
     assert not covid_data_spec_info.different_than(covid_data_spec.info)
 
 

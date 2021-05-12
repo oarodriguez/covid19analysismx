@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum, unique
 from pathlib import Path
-from tempfile import TemporaryFile
 from typing import Any, ClassVar, Dict, Iterable, Mapping, Optional, Tuple
 from urllib.parse import urlparse
 from zipfile import ZipFile
@@ -84,6 +83,11 @@ class DataInfo:
         """Post initialization."""
         with path.open("r") as fp:
             info = json.load(fp)
+            if "http_headers" in info:
+                # NOTE: Is this necessary? We must check.
+                info["http_headers"] = normalize_http_headers(
+                    info["http_headers"]
+                )
         return cls(info)
 
     @property
@@ -246,7 +250,7 @@ class DataManager:
         headers = normalize_http_headers(response.headers)
         return DataInfo({"http_headers": headers})
 
-    def download_covid_data(self, keep_zip: bool = False):
+    def download_covid_data(self):
         """Retrieve the COVID data from the government website.
 
         It stores the CSV file with data in the filesystem, and
@@ -256,20 +260,15 @@ class DataManager:
         latest_resp = requests.get(data_url)
         latest_resp.raise_for_status()
         # We are going to save the data in the DATA_DIR directory.
-        if keep_zip:
-            zip_file_name = Path(urlparse(data_url).path).name
-            dest_dir = self.config.DATA_DIR
-            zip_path = dest_dir / zip_file_name
-            with zip_path.open("wb") as fp:
-                fp.write(latest_resp.content)
-            data_path = self.unzip_covid_data_csv(ZipFile(zip_path))
-        else:
-            with TemporaryFile(suffix="zip") as temp_file:
-                temp_file.write(latest_resp.content)
-                data_path = self.unzip_covid_data_csv(ZipFile(temp_file))
+        zip_file_name = Path(urlparse(data_url).path).name
+        dest_dir = self.config.DATA_DIR
+        zip_path = dest_dir / zip_file_name
+        with zip_path.open("wb") as fp:
+            fp.write(latest_resp.content)
         # Store the information file.
+        data_path = self.unzip_covid_data_csv(ZipFile(zip_path))
         data_info = self.covid_data_info(data_path, latest_resp)
-        info_path = data_path.with_suffix(".json")
+        info_path = zip_path.with_suffix(".json")
         data_info.save(info_path)
         return COVIDData(data_path, data_info)
 
@@ -278,7 +277,7 @@ class DataManager:
         data_path = self.unzip_covid_data_csv(ZipFile(path))
         # Store the information file.
         data_info = self.covid_data_info(data_path, response)
-        info_path = data_path.with_suffix(".json")
+        info_path = path.with_suffix(".json")
         data_info.save(info_path)
         return COVIDData(data_path, data_info)
 
@@ -375,7 +374,7 @@ class DataManager:
             )
         # Store the information file.
         data_info = DataInfo(file_info)
-        info_path = desc_path.with_suffix(".json")
+        info_path = path.with_suffix(".json")
         data_info.save(info_path)
         return COVIDDataSpec(desc_path, cats_path, data_info)
 
