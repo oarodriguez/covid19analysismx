@@ -25,6 +25,7 @@ responses = "^0.13.2"
 duckdb = "^0.2.5"
 xlrd = "^2.0.1"
 openpyxl = "^3.0.7"
+rich = "^10.1.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.5.6"

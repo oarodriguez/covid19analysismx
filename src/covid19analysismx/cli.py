@@ -9,9 +9,16 @@ import requests
 import responses
 import typer
 
-from covid19analysismx import Config, DataInfo, DataManager, DBDataManager
+from covid19analysismx import (
+    Config,
+    DataInfo,
+    DataManager,
+    DBDataManager,
+    console,
+)
 
 # CLI application instance.
+
 app = typer.Typer()
 
 # Global configuration object.
@@ -72,7 +79,7 @@ def setup_database(
     if cached_data is None:
         # Download the data.
         print("Downloading latest COVID-19 data from remote site...")
-        data = manager.download_covid_data(keep_zip=True)
+        data = manager.download_covid_data()
         print("COVID-19 data downloaded.")
     else:
         # Use cached data.
@@ -157,25 +164,30 @@ def setup_database(
     print("Database initialized successfully.")
 
 
+ATTENTION_MSG = ":exclamation_mark: [red]ATTENTION[/] :exclamation_mark:"
+
+
 @app.command()
 def check_updates():
     """Check if there is new data available at the remote sources."""
-    print("Checking for updates...")
-    saved_data_info_file = manager.config.DATABASE.with_suffix(
-        manager.config.SAVED_COVID_DATA_INFO_FILE_SUFFIX
-    )
-    if not saved_data_info_file.exists():
-        print("Local COVID-19 data has not been saved/downloaded yet.")
-        return
-    else:
-        saved_data_info = DataInfo.from_file(saved_data_info_file)
-        remote_info = manager.remote_covid_data_info()
-        if saved_data_info.different_than(remote_info):
-            print("There is new data available in the remote sources.")
+    with console.status("[blue]Checking for updates..."):
+        if not manager.covid_data_file.exists():
+            console.print(
+                "Local COVID-19 data has not been saved/downloaded yet."
+            )
+            return
         else:
-            print("Local COVID-19 data is up to date.")
-
-            catalogs_headers = manager.remote_covid_data_spec_info()
+            data_info = manager.covid_data_info
+            remote_info = manager.remote_covid_data_info()
+            if data_info.different_than(remote_info):
+                console.print(ATTENTION_MSG)
+                console.print(
+                    "[bold]Local COVID-19 data file size does not match the "
+                    "remote source file size. It is recommended to download "
+                    "the remote data again.[/]"
+                )
+            else:
+                console.print("Local COVID-19 data is up to date.")
 
 
 @app.command()

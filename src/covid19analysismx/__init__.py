@@ -14,6 +14,7 @@ from .data import (
     DataManager,
     DBDataManager,
 )
+from .log import console
 
 _metadata = importlib_metadata.metadata("covid19analysismx")  # type: ignore
 
@@ -29,4 +30,5 @@ __all__ = [
     "DataInfo",
     "DataManager",
     "__version__",
+    "console",
 ]
