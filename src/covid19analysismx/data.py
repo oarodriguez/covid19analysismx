@@ -1,6 +1,7 @@
 """Routines for retrieving and transforming the project data sources."""
 
 import json
+import mimetypes
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum, unique
@@ -351,7 +352,7 @@ class DataManager:
         if not data_file.exists():
             return None
         with responses.RequestsMock() as req_mock:
-            content_type = "application/x-zip-compressed"
+            content_type, _ = mimetypes.guess_type(data_file.name)
             content_length = str(data_file.stat().st_size)
             response_headers = {
                 "Content-Length": content_length,
@@ -419,7 +420,7 @@ class DataManager:
         if not data_file.exists():
             return None
         with responses.RequestsMock() as req_mock:
-            content_type = "application/x-zip-compressed"
+            content_type, _ = mimetypes.guess_type(data_file.name)
             content_length = str(data_file.stat().st_size)
             response_headers = {
                 "Content-Length": content_length,
