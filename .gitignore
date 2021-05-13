@@ -194,6 +194,9 @@ dmypy.json
 tests/data/*
 !tests/data/datos_abiertos_covid19_11.04.2021.mock.zip
 !tests/data/datos_abiertos_covid19_30.04.2020.zip
+!tests/data/diccionario_datos_covid19.zip
 
 # Auto-generated sqlite databases.
+data/*
 data/*.sqlite
+!data/catalogs/*
