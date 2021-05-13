@@ -242,6 +242,18 @@ class DataManager:
     # Project/App configuration instance.
     config: Config
 
+    @property
+    def covid_data_file(self):
+        """COVID data file."""
+        config = self.config
+        file_name = Path(urlparse(config.COVID_DATA_URL).path).name
+        return config.DATA_DIR / file_name
+
+    @property
+    def covid_data_info_file(self):
+        """File with information about the COVID data."""
+        return self.covid_data_file.with_suffix(".json")
+
     def remote_covid_data_info(self):
         """Retrieve information about the latest COVID data."""
         data_url = self.config.COVID_DATA_URL
@@ -250,6 +262,19 @@ class DataManager:
         headers = normalize_http_headers(response.headers)
         return DataInfo({"http_headers": headers})
 
+    def covid_data_update_exists(self):
+        """Indicate if new COVID data is available."""
+        data_info_file = self.covid_data_info_file
+        if data_info_file.exists():
+            saved_data_info = DataInfo.from_file(data_info_file)
+            # Only download new data if it is different than the
+            # current one. Otherwise, finish the program.
+            remote_info = self.remote_covid_data_info()
+            if not saved_data_info.different_than(remote_info):
+                return False
+        # Return true otherwise.
+        return True
+
     def remote_covid_data_spec_info(self):
         """Retrieve information about the latest COVID data."""
         data_url = self.config.COVID_DATA_SPEC_URL
@@ -257,6 +282,29 @@ class DataManager:
         response.raise_for_status()
         headers = normalize_http_headers(response.headers)
         return DataInfo({"http_headers": headers})
+
+    @property
+    def covid_data_spec_file(self):
+        """File with the specs for the COVID data."""
+        config = self.config
+        file_name = Path(urlparse(config.COVID_DATA_SPEC_URL).path).name
+        return config.DATA_DIR / file_name
+
+    @property
+    def covid_data_spec_info_file(self):
+        """File with information about the specs for the COVID data."""
+        return self.covid_data_spec_file.with_suffix(".json")
+
+    def covid_data_spec_update_exists(self):
+        """Indicate if new specs for the COVID data are available."""
+        data_info_file = self.covid_data_spec_info_file
+        if data_info_file.exists():
+            saved_data_info = DataInfo.from_file(data_info_file)
+            remote_info = self.remote_covid_data_spec_info()
+            if not saved_data_info.different_than(remote_info):
+                return False
+        # Return true otherwise.
+        return True
 
     def download_covid_data(self):
         """Retrieve the COVID data from the government website.
@@ -268,16 +316,13 @@ class DataManager:
         latest_resp = requests.get(data_url)
         latest_resp.raise_for_status()
         # We are going to save the data in the DATA_DIR directory.
-        zip_file_name = Path(urlparse(data_url).path).name
-        dest_dir = self.config.DATA_DIR
-        zip_path = dest_dir / zip_file_name
+        zip_path = self.covid_data_file
         with zip_path.open("wb") as fp:
             fp.write(latest_resp.content)
         # Store the information file.
         data_path = self.unzip_covid_data_csv(ZipFile(zip_path))
         data_info = self.covid_data_info(data_path, latest_resp)
-        info_path = zip_path.with_suffix(".json")
-        data_info.save(info_path)
+        data_info.save(self.covid_data_info_file)
         return COVIDData(data_path, data_info)
 
     def extract_covid_data(self, path: Path, response: Response = None):
@@ -330,9 +375,7 @@ class DataManager:
         latest_resp = requests.get(data_url)
         latest_resp.raise_for_status()
         # We are going to save the data in the DATA_DIR directory.
-        zip_file_name = Path(urlparse(data_url).path).name
-        dest_dir = self.config.DATA_DIR
-        zip_path = dest_dir / zip_file_name
+        zip_path = self.covid_data_spec_file
         with zip_path.open("wb") as fp:
             fp.write(latest_resp.content)
         return self.extract_covid_data_spec(zip_path, response=latest_resp)
@@ -382,8 +425,7 @@ class DataManager:
             )
         # Store the information file.
         data_info = DataInfo(file_info)
-        info_path = path.with_suffix(".json")
-        data_info.save(info_path)
+        data_info.save(self.covid_data_spec_info_file)
         return COVIDDataSpec(desc_path, cats_path, data_info)
 
     def catalogs(self) -> DataCatalogs:
