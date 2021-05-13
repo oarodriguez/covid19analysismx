@@ -52,7 +52,7 @@ LOCAL_DATA_SPEC_FILE = (
 LOCAL_DATA_SPEC_CONTENT_TYPE = "application/x-zip-compressed"
 LOCAL_DATA_SPEC_CONTENT_LENGTH = str(LOCAL_DATA_SPEC_FILE.stat().st_size)
 LOCAL_DATA_SPEC_RESPONSE_HEADERS = {
-    "Content-Length": CONTENT_LENGTH,
+    "Content-Length": LOCAL_DATA_SPEC_CONTENT_LENGTH,
     "Accept-Ranges": "bytes",
 }
 
@@ -176,6 +176,9 @@ def covid_data_spec_info(manager: DataManager):
 def connection(config: Config) -> DuckDBPyConnection:
     """Yield an auto-closing SQLite connection to the system database."""
     yield connect(str(config.DATABASE))
+
+
+# ****** Testing starts here. ******
 
 
 def test_not_different_than(

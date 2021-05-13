@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from enum import Enum, unique
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, Mapping, Optional, Tuple
@@ -11,6 +11,7 @@ from zipfile import ZipFile
 
 import pandas as pd
 import requests
+import responses
 from duckdb import DuckDBPyConnection
 from requests import Response
 
@@ -264,15 +265,12 @@ class DataManager:
 
     def covid_data_update_exists(self):
         """Indicate if new COVID data is available."""
-        data_info_file = self.covid_data_info_file
-        if data_info_file.exists():
-            saved_data_info = DataInfo.from_file(data_info_file)
-            # Only download new data if it is different than the
-            # current one. Otherwise, finish the program.
-            remote_info = self.remote_covid_data_info()
-            if not saved_data_info.different_than(remote_info):
-                return False
-        # Return true otherwise.
+        local_info = self.covid_data_info
+        if local_info is None:
+            return True
+        remote_info = self.remote_covid_data_info()
+        if not local_info.different_than(remote_info):
+            return False
         return True
 
     def remote_covid_data_spec_info(self):
@@ -297,13 +295,12 @@ class DataManager:
 
     def covid_data_spec_update_exists(self):
         """Indicate if new specs for the COVID data are available."""
-        data_info_file = self.covid_data_spec_info_file
-        if data_info_file.exists():
-            saved_data_info = DataInfo.from_file(data_info_file)
-            remote_info = self.remote_covid_data_spec_info()
-            if not saved_data_info.different_than(remote_info):
-                return False
-        # Return true otherwise.
+        local_info = self.covid_data_spec_info
+        if local_info is None:
+            return True
+        remote_info = self.remote_covid_data_spec_info()
+        if not local_info.different_than(remote_info):
+            return False
         return True
 
     def download_covid_data(self):
@@ -321,18 +318,12 @@ class DataManager:
             fp.write(latest_resp.content)
         # Store the information file.
         data_path = self.unzip_covid_data_csv(ZipFile(zip_path))
-        data_info = self.covid_data_info(data_path, latest_resp)
-        data_info.save(self.covid_data_info_file)
-        return COVIDData(data_path, data_info)
+        return COVIDData(data_path, self.covid_data_info)
 
     def extract_covid_data(self, path: Path, response: Response = None):
         """Retrieve COVID data from a local zipped file."""
         data_path = self.unzip_covid_data_csv(ZipFile(path))
-        # Store the information file.
-        data_info = self.covid_data_info(data_path, response)
-        info_path = path.with_suffix(".json")
-        data_info.save(info_path)
-        return COVIDData(data_path, data_info)
+        return COVIDData(data_path, self.covid_data_info)
 
     def unzip_covid_data_csv(self, zip_file: ZipFile):
         """Extract the CSV from a zipped data file."""
@@ -353,21 +344,29 @@ class DataManager:
             raise KeyError
         return dest_dir / file_name
 
-    @staticmethod
-    def covid_data_info(path: Path, response: Response = None):
-        """Retrieve information about a COVID CSV data file."""
-        file_name = path.name
-        source_name_fmt = "%d%m%yCOVID19MEXICO.csv"
-        source_date = datetime.strptime(file_name, source_name_fmt).date()
-        file_info: Dict[str, Any] = {
-            "source_file_name": file_name,
-            "source_data_date": source_date.isoformat(),
-        }
-        if response is not None:
-            file_info["http_headers"] = normalize_http_headers(
-                response.headers
+    @property
+    def covid_data_info(self):
+        """Information about a local COVID data file."""
+        data_file = self.covid_data_file
+        if not data_file.exists():
+            return None
+        with responses.RequestsMock() as req_mock:
+            content_type = "application/x-zip-compressed"
+            content_length = str(data_file.stat().st_size)
+            response_headers = {
+                "Content-Length": content_length,
+            }
+            req_mock.add(
+                method=responses.HEAD,
+                url=self.config.COVID_DATA_URL,
+                body=b"",
+                headers=response_headers,
+                content_type=content_type,
             )
-        return DataInfo(file_info)
+            response = requests.head(self.config.COVID_DATA_URL)
+            response.raise_for_status()
+        headers = normalize_http_headers(response.headers)
+        return DataInfo({"http_headers": headers})
 
     def download_covid_data_spec(self):
         """Download the file containing the spec of the COVID data."""
@@ -411,22 +410,31 @@ class DataManager:
         # Retrieve information about a COVID spec data files.
         desc_path = data_files["descriptors_file_name"]
         cats_path = data_files["catalogs_file_name"]
-        file_name = desc_path.name
-        source_name_fmt = "%y%m%d Descriptores_.xlsx"
-        source_date = datetime.strptime(file_name, source_name_fmt).date()
-        file_info: Dict[str, Any] = {
-            "descriptors_file_name": file_name,
-            "catalogs_file_name": cats_path.name,
-            "source_data_date": source_date.isoformat(),
-        }
-        if response is not None:
-            file_info["http_headers"] = normalize_http_headers(
-                response.headers
+        return COVIDDataSpec(desc_path, cats_path, self.covid_data_spec_info)
+
+    @property
+    def covid_data_spec_info(self):
+        """Information about a local COVID data file."""
+        data_file = self.covid_data_spec_file
+        if not data_file.exists():
+            return None
+        with responses.RequestsMock() as req_mock:
+            content_type = "application/x-zip-compressed"
+            content_length = str(data_file.stat().st_size)
+            response_headers = {
+                "Content-Length": content_length,
+            }
+            req_mock.add(
+                method=responses.HEAD,
+                url=self.config.COVID_DATA_SPEC_URL,
+                body=b"",
+                headers=response_headers,
+                content_type=content_type,
             )
-        # Store the information file.
-        data_info = DataInfo(file_info)
-        data_info.save(self.covid_data_spec_info_file)
-        return COVIDDataSpec(desc_path, cats_path, data_info)
+            response = requests.head(self.config.COVID_DATA_SPEC_URL)
+            response.raise_for_status()
+        headers = normalize_http_headers(response.headers)
+        return DataInfo({"http_headers": headers})
 
     def catalogs(self) -> DataCatalogs:
         """Iterate over catalogs, i.e., files with a .csv extension."""
