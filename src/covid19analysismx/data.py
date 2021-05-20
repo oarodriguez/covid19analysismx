@@ -218,7 +218,15 @@ class COVIDDataSpec:
     def catalogs(self) -> DataCatalogs:
         """Iterate through the data catalogs defined in the spec."""
         sheets: Mapping[str, pd.DataFrame]
-        sheets = pd.read_excel(self.catalogs_path, sheet_name=None)
+        sheets = pd.read_excel(
+            self.catalogs_path,
+            sheet_name=None,
+            dtype={
+                "CLAVE": object,
+                "CLAVE_ENTIDAD": object,
+                "CLAVE_MUNICIPIO": object,
+            },
+        )
         for sheet_name, cat_df in sheets.items():
             cat_name = sheet_name.split(" ")[-1].lower()
             yield cat_name, cat_df
