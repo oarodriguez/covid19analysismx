@@ -110,7 +110,28 @@ def download_data(force: Optional[bool] = force_download_spec):
             )
 
 
-cached_data_spec = typer.Option(
+@app.command()
+def extract_catalogs():
+    """Extract the catalogs from the COVID data specs files."""
+    with console.status(
+        "Extracting the specs for COVID cases data..."
+    ) as status:
+        covid_data_spec = manager.extract_covid_data_spec(
+            manager.covid_data_spec_file
+        )
+        catalogs_dir = manager.config.CATALOGS_DIR
+        catalogs_dir.mkdir(parents=True, exist_ok=True)
+        status.update("Exporting the catalogs...")
+        console.print(f"Catalogs directory: {catalogs_dir}")
+        for cat_name, cat_df in covid_data_spec.catalogs():
+            file_name = f"{cat_name}_cat.csv"
+            file_name = catalogs_dir / file_name
+            cat_df.to_csv(file_name, index=False, line_terminator="\n")
+            console.print(f"  ✅ Catalog '{cat_name}' exported.")
+            console.print(f"     Catalog file: {file_name}")
+        status.update("✅ Exporting the catalogs")
+
+
 source_data_spec = typer.Option(
     None,
     "--source-file",
