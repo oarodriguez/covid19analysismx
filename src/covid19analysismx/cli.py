@@ -164,11 +164,8 @@ def setup_database(
     print("Database initialized successfully.")
 
 
-ATTENTION_MSG = ":exclamation_mark: [red]ATTENTION[/] :exclamation_mark:"
-
-
 @app.command()
-def check_updates():
+def check_data_updates():
     """Check if there is new data available at the remote sources."""
     with console.status("[blue]Checking for updates..."):
         if not manager.covid_data_file.exists():
@@ -177,10 +174,7 @@ def check_updates():
             )
             return
         else:
-            data_info = manager.covid_data_info
-            remote_info = manager.remote_covid_data_info()
-            if data_info.different_than(remote_info):
-                console.print(ATTENTION_MSG)
+            if manager.covid_data_differ():
                 console.print(
                     "[bold]Local COVID-19 data file size does not match the "
                     "remote source file size. It is recommended to download "
@@ -189,7 +183,18 @@ def check_updates():
             else:
                 console.print("Local COVID-19 data is up to date.")
 
-
-@app.command()
-def check_catalogs_updates():
-    """Docstring."""
+        if not manager.covid_data_spec_file.exists():
+            console.print(
+                "Local COVID-19 data spec file has not been "
+                "saved/downloaded yet."
+            )
+            return
+        else:
+            if manager.covid_data_specs_differ():
+                console.print(
+                    "[bold]Local COVID-19 data spec file size does not match "
+                    "the remote source file size. It is recommended to "
+                    "download the remote data again.[/]"
+                )
+            else:
+                console.print("Local COVID-19 data is up to date.")
