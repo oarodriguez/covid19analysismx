@@ -119,9 +119,18 @@ source_data_spec = typer.Option(
     help="Use an existing data file located at PATH to set up the database.",
 )
 
+skip_cases_spec = typer.Option(
+    False,
+    is_flag=True,
+    help="Omit saving the COVID cases data.",
+)
+
 
 @app.command("setup-db")
-def setup_database(source_data: Optional[Path] = source_data_spec):
+def setup_database(
+    source_data: Optional[Path] = source_data_spec,
+    skip_cases: bool = skip_cases_spec,
+):
     """Set up the system database."""
     with console.status("Initializing the system database...") as status:
         # Create the data directory.
@@ -135,18 +144,21 @@ def setup_database(source_data: Optional[Path] = source_data_spec):
                 covid_data_file = (Path.cwd() / source_data).resolve()
             else:
                 covid_data_file = source_data.resolve()
-        status.update("Extracting COVID cases data...")
-        covid_data = manager.extract_covid_data(covid_data_file)
-        console.print("✅ Extracting COVID cases data.")
         # Save the data to the database.
         db_name = str(config.DATABASE)
         connection = duckdb.connect(db_name)
         dbd_manager = DBDataManager(connection)
-        # Saving the cases data.
-        status.update("Saving COVID-19 cases to the database...")
-        dbd_manager.create_covid_cases_table(config.COVID_DATA_TABLE_NAME)
-        dbd_manager.save_covid_data(config.COVID_DATA_TABLE_NAME, covid_data)
-        console.print("✅ Saving COVID-19 cases data to the database.")
+        if not skip_cases:
+            status.update("Extracting COVID cases data...")
+            covid_data = manager.extract_covid_data(covid_data_file)
+            console.print("✅ Extracting COVID cases data.")
+            # Saving the cases data.
+            status.update("Saving COVID-19 cases to the database...")
+            dbd_manager.create_covid_cases_table(config.COVID_DATA_TABLE_NAME)
+            dbd_manager.save_covid_data(
+                config.COVID_DATA_TABLE_NAME, covid_data
+            )
+            console.print("✅ Saving COVID-19 cases data to the database.")
         # Saving the catalogs.
         status.update("Saving additional information catalogs...")
         dbd_manager.save_catalogs(manager.catalogs())
