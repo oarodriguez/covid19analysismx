@@ -3,19 +3,10 @@
 from pathlib import Path
 from typing import Optional
 
-import click
 import duckdb
-import requests
-import responses
 import typer
 
-from covid19analysismx import (
-    Config,
-    DataInfo,
-    DataManager,
-    DBDataManager,
-    console,
-)
+from covid19analysismx import Config, DataManager, DBDataManager, console
 
 # CLI application instance.
 
