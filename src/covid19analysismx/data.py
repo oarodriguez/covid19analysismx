@@ -264,8 +264,8 @@ class DataManager:
         headers = normalize_http_headers(response.headers)
         return DataInfo({"http_headers": headers})
 
-    def covid_data_update_exists(self):
-        """Indicate if new COVID data is available."""
+    def covid_data_differ(self):
+        """Indicate if the local and remote COVID data differ."""
         local_info = self.covid_data_info
         if local_info is None:
             return True
