@@ -294,8 +294,8 @@ class DataManager:
         """File with information about the specs for the COVID data."""
         return self.covid_data_spec_file.with_suffix(".json")
 
-    def covid_data_spec_update_exists(self):
-        """Indicate if new specs for the COVID data are available."""
+    def covid_data_specs_differ(self):
+        """Indicate if the local and remote specs for COVID data differ."""
         local_info = self.covid_data_spec_info
         if local_info is None:
             return True
