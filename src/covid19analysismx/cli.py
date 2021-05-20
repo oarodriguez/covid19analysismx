@@ -198,3 +198,51 @@ def check_data_updates():
                 )
             else:
                 console.print("Local COVID-19 data is up to date.")
+
+
+force_download_spec = typer.Option(
+    False,
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Download the remote data, even if an identical local copy exists.",
+)
+
+
+@app.command()
+def download_data(force: Optional[bool] = force_download_spec):
+    """Download the latest data from the remote servers."""
+    # Create the data directory.
+    manager.config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    # Download specs data.
+    with console.status("[blue]Downloading data..."):
+        if force or manager.covid_data_specs_differ():
+            console.print(
+                "Downloading specs for the COVID-19 data from remote site..."
+            )
+            specs_data = manager.download_covid_data_spec()
+            console.print(f"Specs data have been downloaded and extracted.")
+            console.print(
+                f"Catalogs data location: {specs_data.catalogs_path}"
+            )
+            console.print(
+                f"Descriptors data location: {specs_data.descriptors_path}"
+            )
+        else:
+            console.print(
+                f"The specs local and remote files are identical. "
+                f"Skipping download."
+            )
+        # Download COVID cases data.
+        if force or manager.covid_data_differ():
+            console.print("Downloading COVID-19 data from remote site...")
+            covid_data = manager.download_covid_data()
+            console.print(
+                f"COVID-19 cases data have been downloaded and extracted."
+            )
+            print(f"Data location: {covid_data.path}")
+        else:
+            console.print(
+                f"The COVID-19 cases local and remote files are "
+                f"identical. Skipping download."
+            )
