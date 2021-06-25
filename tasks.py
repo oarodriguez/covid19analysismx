@@ -28,6 +28,9 @@ MYPY_CMD = "mypy"
 PYTEST_CMD = "pytest"
 SPHINX_BUILD_CMD = "sphinx-build"
 
+# Coverage report XML file.
+COVERAGE_XML = "coverage.xml"
+
 # Arguments to pass to subprocess.run for each task.
 
 # Formatting.
@@ -64,7 +67,14 @@ FLAKE8_ARGS = [
 ]
 
 # pytest.
-PYTEST_ARGS = [PYTEST_CMD]
+PYTEST_ARGS = [
+    PYTEST_CMD,
+    "--cov",
+    "--cov-report",
+    "term-missing",
+    "--cov-report",
+    f"xml:./{COVERAGE_XML}",
+]
 
 # mypy.
 MYPY_ARGS = [

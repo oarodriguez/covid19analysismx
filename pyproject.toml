@@ -38,6 +38,7 @@ flake8 = ">=3.9.0"
 pydocstyle = ">=6.0.0"
 isort = ">=5.7.0"
 jupyterlab-code-formatter = ">=1.4.5"
+pytest-cov = ">=2.12.1"
 
 [tool.poetry.scripts]
 covid19analysismx = "covid19analysismx.cli:app"
@@ -55,6 +56,24 @@ src_paths = ["src"]
 [tool.pytest.ini_options]
 addopts = "-s -vv -ra"
 testpaths = ["tests"]
+
+[tool.coverage.paths]
+source = ["src"]
+
+[tool.coverage.run]
+parallel = true
+branch = true
+source = ["covid19analysismx"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
