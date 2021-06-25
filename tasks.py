@@ -133,7 +133,7 @@ def tests():
 
 @app.command()
 def version():
-    """Run mypy."""
+    """Project version."""
     print(__version__)
 
 
@@ -145,11 +145,16 @@ def format_():
 
 
 @app.command()
-def format_check():
-    """Run all formatting and typechecking tasks."""
-    _run(FORMAT_ARGS)
-    _run(ISORT_ARGS)
+def typecheck():
+    """Run all typechecking tasks."""
     _run(MYPY_ARGS)
+
+
+@app.command()
+def lint():
+    """Run all linting tasks."""
+    _run(PYDOCSTYLE_ARGS)
+    _run(FLAKE8_ARGS)
 
 
 if __name__ == "__main__":
