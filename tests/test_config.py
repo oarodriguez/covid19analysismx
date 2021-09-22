@@ -4,7 +4,7 @@ from typing import Dict
 
 import pytest
 
-from covid19analysismx import Config
+from covid19mx import Config
 
 TEST_ENV_VARS = {
     "DATA_DIR": "~/a-fake-dir",

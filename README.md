@@ -18,7 +18,7 @@ this project. If you use [conda][conda], it is enough to make a minimal environm
 with Python 3.7 or greater, for instance,
 
 ```shell
-conda create -n covid19analysismx python=3.7
+conda create -n covid19mx python=3.7
 ```
 
 Naturally, other virtual environment managers can be used.

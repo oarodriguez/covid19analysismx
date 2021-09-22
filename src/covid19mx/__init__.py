@@ -16,7 +16,7 @@ from .data import (
 )
 from .log import console
 
-metadata = importlib_metadata.metadata("covid19analysismx")  # type: ignore
+metadata = importlib_metadata.metadata("covid19mx")  # type: ignore
 
 # Export package information.
 __version__ = metadata["version"]

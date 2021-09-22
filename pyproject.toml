@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "covid19analysismx"
+name = "covid19mx"
 version = "2021.1.0.dev0"
 description = "Analysis of the COVID-19 pandemic in Mexico"
 authors = ["Omar Abel Rodríguez-López <oarodriguez.mx@gmail.com>"]
 
 packages = [
-  { include = "covid19analysismx", from = "src" },
+  { include = "covid19mx", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -45,7 +45,7 @@ pytest-cov = ">=2.12.1"
 jupyter = ["jupyter", "jupyterlab", "jupyterlab-code-formatter", "jupytext"]
 
 [tool.poetry.scripts]
-covid19analysismx = "covid19analysismx.cli:app"
+covid19mx = "covid19mx.cli:app"
 
 [tool.black]
 line-length = 79
@@ -67,7 +67,7 @@ source = ["src"]
 [tool.coverage.run]
 parallel = true
 branch = true
-source = ["covid19analysismx"]
+source = ["covid19mx"]
 
 [tool.coverage.report]
 show_missing = true

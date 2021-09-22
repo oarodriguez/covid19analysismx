@@ -6,7 +6,7 @@ import pytest
 import responses
 from duckdb import DuckDBPyConnection, connect
 
-from covid19analysismx import (
+from covid19mx import (
     Config,
     COVIDData,
     COVIDDataSpec,

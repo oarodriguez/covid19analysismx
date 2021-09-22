@@ -6,6 +6,9 @@ Versions follow [CalVer](https://calver.org).
 
 ### Changed
 
+- Change the project name to `covid19mx`.
+- Update development tasks script.
+- Use `click` instead of `typer` to implement the project CLIs.
 - Do not pin versions for any dependencies in pyproject.toml file.
 - Use CalVer instead SemVer for versioning. 
 

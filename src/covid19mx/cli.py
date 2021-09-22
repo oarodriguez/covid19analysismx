@@ -6,7 +6,7 @@ from typing import Optional
 import click
 import duckdb
 
-from covid19analysismx import Config, DataManager, DBDataManager, console
+from covid19mx import Config, DataManager, DBDataManager, console
 
 # CLI application instance.
 app = click.Group()
@@ -49,7 +49,7 @@ def check_data_updates():
                     "download the remote data again.[/]"
                 )
             else:
-                console.print("Local COVID-19 data is up to date.")
+                console.print("Local COVID-19 data spec is up to date.")
 
 
 @app.command()

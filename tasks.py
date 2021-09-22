@@ -65,9 +65,9 @@ def _get_package_info():
 
 def _get_installed_package_info():
     """Return the name and version of the installed project package."""
-    import covid19analysismx
+    import covid19mx
 
-    return covid19analysismx.metadata["name"], covid19analysismx.__version__
+    return covid19mx.metadata["name"], covid19mx.__version__
 
 
 @app.command()
@@ -139,11 +139,9 @@ def upgrade():
 @app.command()
 def version():
     """Show the installed project version."""
-    import covid19analysismx
+    import covid19mx
 
-    print(
-        f"{covid19analysismx.metadata['name']} {covid19analysismx.__version__}"
-    )
+    print(f"{covid19mx.metadata['name']} {covid19mx.__version__}")
 
 
 @app.command()
