@@ -16,10 +16,13 @@ from .data import (
 )
 from .log import console
 
-_metadata = importlib_metadata.metadata("covid19analysismx")  # type: ignore
+metadata = importlib_metadata.metadata("covid19analysismx")  # type: ignore
 
 # Export package information.
-__version__ = _metadata["version"]
+__version__ = metadata["version"]
+__author__ = metadata["author"]
+__description__ = metadata["description"]
+__license__ = metadata["license"]
 
 __all__ = [
     "COVIDData",
@@ -31,4 +34,5 @@ __all__ = [
     "DataManager",
     "__version__",
     "console",
+    "metadata",
 ]
