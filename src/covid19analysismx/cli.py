@@ -3,14 +3,13 @@
 from pathlib import Path
 from typing import Optional
 
+import click
 import duckdb
-import typer
 
 from covid19analysismx import Config, DataManager, DBDataManager, console
 
 # CLI application instance.
-
-app = typer.Typer()
+app = click.Group()
 
 # Global configuration object.
 config = Config.from_environ()
@@ -53,17 +52,14 @@ def check_data_updates():
                 console.print("Local COVID-19 data is up to date.")
 
 
-force_download_spec = typer.Option(
-    False,
+@app.command()
+@click.option(
     "--force",
     "-f",
     is_flag=True,
     help="Download the remote data, even if an identical local copy exists.",
 )
-
-
-@app.command()
-def download_data(force: Optional[bool] = force_download_spec):
+def download_data(force: Optional[bool] = False):
     """Download the latest data from the remote servers."""
     # Create the data directory.
     manager.config.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -123,25 +119,21 @@ def extract_catalogs():
         status.update("✅ Exporting the catalogs")
 
 
-source_data_spec = typer.Option(
-    None,
+@app.command("setup-db")
+@click.option(
     "--source-file",
     "-s",
-    dir_okay=False,
+    type=click.Path(dir_okay=False),
     help="Use an existing data file located at PATH to set up the database.",
 )
-
-skip_cases_spec = typer.Option(
-    False,
+@click.option(
+    "--skip-cases",
     is_flag=True,
     help="Omit saving the COVID cases data.",
 )
-
-
-@app.command("setup-db")
 def setup_database(
-    source_data: Optional[Path] = source_data_spec,
-    skip_cases: bool = skip_cases_spec,
+    source_data: Path,
+    skip_cases: bool,
 ):
     """Set up the system database."""
     with console.status("Initializing the system database...") as status:
