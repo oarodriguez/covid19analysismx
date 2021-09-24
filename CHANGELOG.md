@@ -2,7 +2,7 @@
 
 Versions follow [CalVer](https://calver.org).
 
-## 21.1.0 (Unreleased)
+## 2021.1.0 (2021-09-24)
 
 ### Changed
 
