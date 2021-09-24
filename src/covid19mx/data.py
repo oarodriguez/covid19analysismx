@@ -578,8 +578,8 @@ class DBDataManager:
                 CREATE TABLE {name} AS
                 SELECT * FROM cat_data_view;
             """
-        self.connection.unregister("cat_data_view")
         self.connection.execute(query)
+        self.connection.unregister("cat_data_view")
 
     def save_catalogs(self, catalogs: DataCatalogs):
         """Save the catalogs data in the system database."""

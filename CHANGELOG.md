@@ -6,7 +6,10 @@ Versions follow [CalVer](https://calver.org).
 
 ### Added
 
-TODO.
+- Add support to identify code quality issues using `pre-commit` library.
+- Update `duckdb`, but avoid version `0.2.9` due to a `Windows fatal exception:
+  access violation` in the tests. TODO: Report issue in `duckdb` GitHub repo.
+- Update other dependencies.
 
 ### Changed
 

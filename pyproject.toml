@@ -26,7 +26,7 @@ requests = ">=2.25.1"
 seaborn = ">=0.11.1"
 python-dotenv = ">=0.15.0"
 responses = ">=0.13.2"
-duckdb = ">=0.2.5"
+duckdb = ">=0.2.5, !=0.2.9"
 xlrd = ">=2.0.1"
 openpyxl = ">=3.0.7"
 rich = ">=10.1.0"
@@ -40,6 +40,8 @@ flake8 = ">=3.9.0"
 pydocstyle = ">=6.0.0"
 isort = ">=5.7.0"
 pytest-cov = ">=2.12.1"
+pre-commit = ">=2.13.0"
+rope = ">=0.18.0"
 
 [tool.poetry.extras]
 jupyter = ["jupyter", "jupyterlab", "jupyterlab-code-formatter", "jupytext"]
