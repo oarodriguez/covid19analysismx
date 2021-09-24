@@ -6,6 +6,7 @@ Versions follow [CalVer](https://calver.org).
 
 ### Added
 
+- Install `streamlit` library to create the interactive dashboard.
 - Add support to identify code quality issues using `pre-commit` library.
 - Update `duckdb`, but avoid version `0.2.9` due to a `Windows fatal exception:
   access violation` in the tests. TODO: Report issue in `duckdb` GitHub repo.
@@ -13,7 +14,7 @@ Versions follow [CalVer](https://calver.org).
 
 ### Changed
 
-TODO.
+- Downgrade `click` to version `7.1.2` so we can install `streamlit`.
 
 ### Deprecated
 
@@ -37,7 +38,7 @@ TODO.
 - Update development tasks script.
 - Use `click` instead of `typer` to implement the project CLIs.
 - Do not pin versions for any dependencies in pyproject.toml file.
-- Use CalVer instead SemVer for versioning. 
+- Use CalVer instead SemVer for versioning.
 
 ## 0.1.0 [2021-04-08]
 

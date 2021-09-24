@@ -16,7 +16,7 @@ jupyterlab = { version = ">=3.0.11", optional = true }
 jupyterlab-code-formatter = { version = ">=1.4.5", optional = true }
 jupytext = { version = ">=1.11.1", optional = true }
 typing-extensions = ">=3.7.4"
-click = ">=8.0.1"
+click = ">=7.1.2"
 numpy = ">=1.20.1"
 scipy = ">=1.6.1"
 matplotlib = ">=3.3.4"
@@ -30,6 +30,7 @@ duckdb = ">=0.2.5, !=0.2.9"
 xlrd = ">=2.0.1"
 openpyxl = ">=3.0.7"
 rich = ">=10.1.0"
+streamlit = ">=0.89.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = ">=1.5.6"
