@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "covid19mx"
-version = "2021.1.0"
+version = "2021.2.0.dev0"
 description = "Analysis of the COVID-19 pandemic in Mexico"
 authors = ["Omar Abel Rodríguez-López <oarodriguez.mx@gmail.com>"]
 
