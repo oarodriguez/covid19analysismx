@@ -1909,7 +1909,7 @@ jupyter = ["jupyter", "jupyterlab", "jupyterlab-code-formatter", "jupytext"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "7c2e34714221c5ea9c66d5cf70993b837fc7c0ffa4c003e13b569d2bf4b22777"
+content-hash = "d3625731e39ef7475e7e541bf2fe2ceae81aeedbfb9e06f24302355ca2c7a86c"
 
 [metadata.files]
 altair = [
