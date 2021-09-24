@@ -70,7 +70,7 @@ def download_data(force: Optional[bool] = False):
                 "Downloading specs for the COVID-19 data from remote site..."
             )
             specs_data = manager.download_covid_data_spec()
-            console.print(f"Specs data have been downloaded and extracted.")
+            console.print("Specs data have been downloaded and extracted.")
             console.print(
                 f"Catalogs data location: {specs_data.catalogs_path}"
             )
@@ -79,21 +79,21 @@ def download_data(force: Optional[bool] = False):
             )
         else:
             console.print(
-                f"The specs local and remote files are identical. "
-                f"Skipping download."
+                "The specs local and remote files are identical. "
+                "Skipping download."
             )
         # Download COVID cases data.
         if force or manager.covid_data_differ():
             console.print("Downloading COVID-19 data from remote site...")
-            covid_data = manager.download_covid_data()
+            manager.download_covid_data()
             console.print(
-                f"COVID-19 cases data have been downloaded and extracted."
+                "COVID-19 cases data have been downloaded and extracted."
             )
-            print(f"Data location: {covid_data.path}")
+            print("Data location: {covid_data.path}")
         else:
             console.print(
-                f"The COVID-19 cases local and remote files are "
-                f"identical. Skipping download."
+                "The COVID-19 cases local and remote files are "
+                "identical. Skipping download."
             )
 
 
@@ -124,6 +124,7 @@ def extract_catalogs():
     "--source-file",
     "-s",
     type=click.Path(dir_okay=False),
+    default=None,
     help="Use an existing data file located at PATH to set up the database.",
 )
 @click.option(
@@ -132,7 +133,7 @@ def extract_catalogs():
     help="Omit saving the COVID cases data.",
 )
 def setup_database(
-    source_data: Path,
+    source_file: Path,
     skip_cases: bool,
 ):
     """Set up the system database."""
@@ -141,13 +142,13 @@ def setup_database(
         manager.config.DATA_DIR.mkdir(parents=True, exist_ok=True)
         if manager.config.DATABASE.exists():
             manager.config.DATABASE.unlink()
-        if source_data is None:
+        if source_file is None:
             covid_data_file = manager.covid_data_file
         else:
-            if not source_data.is_absolute():
-                covid_data_file = (Path.cwd() / source_data).resolve()
+            if not source_file.is_absolute():
+                covid_data_file = (Path.cwd() / source_file).resolve()
             else:
-                covid_data_file = source_data.resolve()
+                covid_data_file = source_file.resolve()
         # Save the data to the database.
         db_name = str(config.DATABASE)
         connection = duckdb.connect(db_name)
