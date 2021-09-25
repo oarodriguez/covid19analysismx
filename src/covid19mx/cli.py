@@ -85,11 +85,11 @@ def download_data(force: Optional[bool] = False):
         # Download COVID cases data.
         if force or manager.covid_data_differ():
             console.print("Downloading COVID-19 data from remote site...")
-            manager.download_covid_data()
+            covid_data = manager.download_covid_data()
             console.print(
                 "COVID-19 cases data have been downloaded and extracted."
             )
-            print("Data location: {covid_data.path}")
+            print(f"Data location: {covid_data.path}")
         else:
             console.print(
                 "The COVID-19 cases local and remote files are "
