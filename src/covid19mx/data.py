@@ -257,7 +257,7 @@ class DataManager:
         """COVID data file."""
         config = self.config
         file_name = Path(urlparse(config.COVID_DATA_URL).path).name
-        return config.DATA_DIR / file_name
+        return config.cache_dir / file_name
 
     @property
     def covid_data_info_file(self):
@@ -295,7 +295,7 @@ class DataManager:
         """File with the specs for the COVID data."""
         config = self.config
         file_name = Path(urlparse(config.COVID_DATA_SPEC_URL).path).name
-        return config.DATA_DIR / file_name
+        return config.cache_dir / file_name
 
     @property
     def covid_data_spec_info_file(self):
@@ -337,7 +337,7 @@ class DataManager:
     def unzip_covid_data_csv(self, zip_file: ZipFile):
         """Extract the CSV from a zipped data file."""
         file_name = None
-        dest_dir = self.config.DATA_DIR
+        dest_dir = self.config.cache_dir
         for file_name in zip_file.namelist():
             if file_name.endswith("COVID19MEXICO.csv"):
                 zip_info = zip_file.getinfo(file_name)
@@ -396,7 +396,7 @@ class DataManager:
         """
         data_files = {}
         zip_file = ZipFile(path)
-        dest_dir = self.config.DATA_DIR
+        dest_dir = self.config.cache_dir
         for file_name in zip_file.namelist():
             if file_name.endswith(".xlsx"):
                 zip_info = zip_file.getinfo(file_name)

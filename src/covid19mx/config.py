@@ -19,6 +19,7 @@ project_path = Path(__file__).parent.parent.parent
 
 # Constants.
 DATA_DIR = "data"
+CACHE_DIR_NAME = ".cache"
 CATALOGS_DIR_NAME = "catalogs"
 DATABASE_NAME = "main-database.duckdb"
 
@@ -107,6 +108,11 @@ class Config:
             COVID_DATA_URL=covid_data_url,
             COVID_DATA_SPEC_URL=covid_data_spec_url,
         )
+
+    @property
+    def cache_dir(self):
+        """Location containing cached data files."""
+        return self.DATA_DIR / CACHE_DIR_NAME
 
     @property
     def catalogs_dir(self):

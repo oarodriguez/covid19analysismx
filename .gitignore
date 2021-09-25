@@ -197,6 +197,4 @@ tests/data/*
 !tests/data/diccionario_datos_covid19.zip
 
 # Auto-generated sqlite databases.
-data/*
-data/*.sqlite
-!data/catalogs/*
+data/.cache/*
