@@ -58,9 +58,6 @@ class Config:
     # Database name.
     DATABASE: Path
 
-    # Directory where other data catalogs are located.
-    CATALOGS_DIR: Path
-
     # Parsed URL for getting the most recent COVID data.
     COVID_DATA_URL: str
 
@@ -87,14 +84,6 @@ class Config:
             else Path(data_dir_var).expanduser().resolve()
         )
 
-        # Normalize the catalogs directory.
-        catalogs_dir_var = environ.get("CATALOGS_DIR")
-        catalogs_dir = (
-            data_dir / CATALOGS_DIR_NAME
-            if catalogs_dir_var is None
-            else Path(catalogs_dir_var).expanduser().resolve()
-        )
-
         # The full URI to access the database.
         database_var = environ.get("DATABASE")
         database = (
@@ -115,7 +104,11 @@ class Config:
         return cls(
             DATA_DIR=data_dir,
             DATABASE=database,
-            CATALOGS_DIR=catalogs_dir,
             COVID_DATA_URL=covid_data_url,
             COVID_DATA_SPEC_URL=covid_data_spec_url,
         )
+
+    @property
+    def catalogs_dir(self):
+        """Location containing data catalogs."""
+        return self.DATA_DIR / CATALOGS_DIR_NAME

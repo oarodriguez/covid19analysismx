@@ -106,7 +106,7 @@ def extract_catalogs():
         covid_data_spec = manager.extract_covid_data_spec(
             manager.covid_data_spec_file
         )
-        catalogs_dir = manager.config.CATALOGS_DIR
+        catalogs_dir = manager.config.catalogs_dir
         catalogs_dir.mkdir(parents=True, exist_ok=True)
         status.update("Exporting the catalogs...")
         console.print(f"Catalogs directory: {catalogs_dir}")

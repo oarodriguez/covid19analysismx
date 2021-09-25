@@ -447,7 +447,7 @@ class DataManager:
 
     def catalogs(self) -> DataCatalogs:
         """Iterate over catalogs, i.e., files with a .csv extension."""
-        cat_dir = self.config.CATALOGS_DIR
+        cat_dir = self.config.catalogs_dir
         for file_path in cat_dir.iterdir():
             # Here, since the only characters in the catalogs file names
             # are alphanumeric (we saved the files this way on purpose), we

@@ -1,3 +1,5 @@
+"""Verify the routines in the ``covid19mx.data`` module."""
+
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -21,7 +23,6 @@ project_path = Path(__file__).parent.parent
 # Environment variables for testing.
 TEST_ENV_VARS = {
     "DATA_DIR": str(project_path / "__tests_data__"),
-    "CATALOGS_DIR": str(project_path / "data" / "catalogs"),
     "COVID_DATA_URL": (
         "http://datosabiertos.salud.gob.mx/gobmx/salud/datos_abiertos/"
         "historicos/2021/04/datos_abiertos_covid19_11.04.2021.zip"
@@ -66,6 +67,7 @@ def config():
     # Create the environment and
     config = Config.from_environ()
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    config.cache_dir.mkdir(parents=True, exist_ok=True)
     # Reset the original environment.
     os.environ.clear()
     os.environ.update(old_environ)
@@ -197,7 +199,7 @@ def test_spec_not_different_than(
 
 
 def test_chunks(covid_data: COVIDData):
-    """Check the expected sizes of the partial dataframes"""
+    """Check the expected sizes of the partial dataframes."""
     size = 2 ** 10
     dfs_chunks = covid_data.chunks(size=size)
     dfs_num_rows = []
@@ -247,7 +249,7 @@ def test_extract_catalogs(config: Config, covid_data_spec: COVIDDataSpec):
     inconsistent ones, so we define a different catalogs_dir variable to
     store the new files.
     """
-    catalogs_dir = project_path / "__tests_data__" / "catalogs"
+    catalogs_dir = config.catalogs_dir
     catalogs_dir.mkdir(parents=True, exist_ok=True)
     for cat_name, cat_df in covid_data_spec.catalogs():
         file_name = f"{cat_name}_cat.csv"
