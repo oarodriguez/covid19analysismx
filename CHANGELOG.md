@@ -22,7 +22,8 @@ TODO.
 
 ### Removed
 
-TODO.
+- Remove `COVID_DATA_TABLE_NAME` attribute from `gspits.config.Config` class.
+  Instead, use a constant and property to indicate the COVID cases table name.
 
 ### Fixed
 

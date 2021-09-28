@@ -23,6 +23,9 @@ CACHE_DIR_NAME = ".cache"
 CATALOGS_DIR_NAME = "catalogs"
 DATABASE_NAME = "main-database.duckdb"
 
+# Name for the COVID-19 table.
+COVID_DATA_TABLE_NAME: str = "covid_cases"
+
 # URL for getting the most recent data.
 COVID_DATA_URL = (
     "http://datosabiertos.salud.gob.mx/gobmx/salud/"
@@ -65,9 +68,6 @@ class Config:
     # URL for getting the most recent catalogs data.
     COVID_DATA_SPEC_URL: str
 
-    # Name for the COVID-19 table.
-    COVID_DATA_TABLE_NAME: str = "covid_cases"
-
     @classmethod
     def from_environ(cls):
         """Initialize from the system environment variables."""
@@ -104,6 +104,11 @@ class Config:
             COVID_DATA_URL=covid_data_url,
             COVID_DATA_SPEC_URL=covid_data_spec_url,
         )
+
+    @property
+    def covid_data_table_name(self):
+        """Name for the COVID-19 table."""
+        return COVID_DATA_TABLE_NAME
 
     @property
     def cache_dir(self):

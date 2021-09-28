@@ -159,9 +159,9 @@ def setup_database(
             console.print("✅ Extracting COVID cases data.")
             # Saving the cases data.
             status.update("Saving COVID-19 cases to the database...")
-            dbd_manager.create_covid_cases_table(config.COVID_DATA_TABLE_NAME)
+            dbd_manager.create_covid_cases_table(config.covid_data_table_name)
             dbd_manager.save_covid_data(
-                config.COVID_DATA_TABLE_NAME, covid_data
+                config.covid_data_table_name, covid_data
             )
             console.print("✅ Saving COVID-19 cases data to the database.")
         # Saving the catalogs.

@@ -216,7 +216,7 @@ def test_save_covid_data(config: Config, covid_data: COVIDData):
     # Any required rollback operations are realized inside the
     # save_covid_data method.
     database = config.DATABASE
-    table_name = config.COVID_DATA_TABLE_NAME
+    table_name = config.covid_data_table_name
     if database.exists():
         database.unlink()
     connection = connect(str(database))
