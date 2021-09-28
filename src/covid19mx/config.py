@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 # Exported variables.
-__all__ = ["Config"]
+__all__ = ["Config", "PROJECT_PATH"]
 
 # Environment variables.
 DEFAULT_DOTENV_FILE = ".env"
@@ -15,12 +15,13 @@ DEFAULT_DOTENV_FILE = ".env"
 DOTENV_FILE = "DOTENV_FILE"
 
 # Project directory path.
-project_path = Path(__file__).parent.parent.parent
+PROJECT_PATH = Path(__file__).parent.parent.parent
 
 # Constants.
 DATA_DIR = "data"
 CACHE_DIR_NAME = ".cache"
 CATALOGS_DIR_NAME = "catalogs"
+ANALYSIS_DIR_NAME = "analysis"
 DATABASE_NAME = "main-database.duckdb"
 
 # Name for the COVID-19 table.
@@ -76,7 +77,7 @@ class Config:
         # Normalize the data directory.
         data_dir_var = environ.get("DATA_DIR")
         data_dir = (
-            project_path / DATA_DIR
+            PROJECT_PATH / DATA_DIR
             if data_dir_var is None
             else Path(data_dir_var).expanduser().resolve()
         )
